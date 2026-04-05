@@ -204,122 +204,123 @@ function Cally(text, currentdate) {
   // Find date keyword - e.g. Today, Tomorrow, Next Week
   this.findDateKeyword = function() {
     var defaultDate = this.startdate ? this.startdate : new Date();
-
-    var regexTodayPos = this.textStringLower.search(/([^a-z]+|^)(today)([^a-z]+|$)/);
-    var regexTomorrowPos = this.textStringLower.search(/([^a-z]+|^)(tomorrow)([^a-z]+|$)/);
-    var regexThisAfternoonPos = this.textStringLower.search(/([^a-z]+|^)(this afternoon)([^a-z]+|$)/);
-    var regexTonightPos = this.textStringLower.search(/([^a-z]+|^)(tonight)|(this evening)([^a-z]+|$)/);
-    var regexInTheMorningPos = this.textStringLower.search(/([^a-z]+|^)(in the morning)([^a-z]+|$)/);
-    var regexNextWeekPos = this.textStringLower.search(/([^a-z]+|^)(next week)([^a-z]+|$)/);
-    var regexNextMonthPos = this.textStringLower.search(/([^a-z]+|^)(next month)([^a-z]+|$)/);
-    var regexNextYearPos = this.textStringLower.search(/([^a-z]+|^)(next year)([^a-z]+|$)/);
-    var regexInXDaysMatch = /([^a-z]+|^)(in )([1-9][0-9]*)( days| day)([^a-z]+|$)/;
-    var regexInXDaysPos = this.textStringLower.search(regexInXDaysMatch);
-    var regexInXWeeksMatch = /([^a-z]+|^)(in )([1-9][0-9]*)( weeks| week)([^a-z]+|$)/;
-    var regexInXWeeksPos = this.textStringLower.search(regexInXWeeksMatch);
-    var regexInXMonthsMatch = /([^a-z]+|^)(in )([1-9][0-9]*)( months| month)([^a-z]+|$)/;
-    var regexInXMonthsPos = this.textStringLower.search(regexInXMonthsMatch);
-    var regexInXYearsMatch = /([^a-z]+|^)(in )([1-9][0-9]*)( years| year)([^a-z]+|$)/;
-    var regexInXYearsPos = this.textStringLower.search(regexInXYearsMatch);
-    var matches;
-
-    if (regexTodayPos > -1) {
-      // Keep the default date.
-      this.datefound = true;
-      this.setSubjectEndPos(regexTodayPos);
-    } else {
-      if (regexTomorrowPos > -1) {
-        this.startdate.setDate(defaultDate.getDate() + 1);
-        this.datefound = true;
-        this.setSubjectEndPos(regexTomorrowPos);
-      } else {
-        if (regexThisAfternoonPos > -1) {
-          // Keep the default date
+    
+    var dateKeywords = [
+      {
+        regex: /([^a-z]+|^)(today)([^a-z]+|$)/,
+        handler: function() {
+          this.datefound = true;
+        }
+      },
+      {
+        regex: /([^a-z]+|^)(tomorrow)([^a-z]+|$)/,
+        handler: function() {
+          this.startdate.setDate(defaultDate.getDate() + 1);
+          this.datefound = true;
+        }
+      },
+      {
+        regex: /([^a-z]+|^)(this afternoon)([^a-z]+|$)/,
+        handler: function() {
           this.datefound = true;
           this.starttimefound = true;
           this.startdate.setHours(AFTERNOON_TIME, 0, 0, 0);
-          this.setSubjectEndPos(regexThisAfternoonPos);
           this.pmKeywordFound = true;
-        } else {
-          if (regexTonightPos > -1) {
-            // Keep the default date
-            this.datefound = true;
-            this.starttimefound = true;
-            this.startdate.setHours(EVENING_TIME, 0, 0, 0);
-            this.setSubjectEndPos(regexTonightPos);
-            this.pmKeywordFound = true;
-          } else {
-            if (regexInTheMorningPos > -1) {
-              this.datefound = true;
-              this.starttimefound = true;
-              this.startdate.setDate(defaultDate.getDate() + 1);
-              this.startdate.setHours(MORNING_TIME, 0, 0, 0);
-              this.setSubjectEndPos(regexInTheMorningPos);
-            } else {
-              if (regexNextWeekPos > -1) {
-                this.datefound = true;
-                this.startdate.setDate(defaultDate.getDate() + 7);
-                this.setSubjectEndPos(regexNextWeekPos);
-              } else {
-                if (regexNextMonthPos > -1) {
-                  this.datefound = true;
-                  this.startdate.setMonth(defaultDate.getMonth() + 1);
-                  this.setSubjectEndPos(regexNextMonthPos);
-                } else {
-                  if (regexNextYearPos > -1) {
-                    this.datefound = true;
-                    this.startdate.setFullYear(defaultDate.getFullYear() + 1);
-                    this.setSubjectEndPos(regexNextYearPos);
-                  } else {
-                    if (regexInXDaysPos > -1) {
-                      this.datefound = true;
-
-                      matches = this.textStringLower.match(regexInXDaysMatch);
-                      if (!!matches[3]) {
-                        this.datefound = true;
-                        this.startdate.setDate(defaultDate.getDate() + Number(matches[3]));
-                      }
-                      this.setSubjectEndPos(regexInXDaysPos);
-                    } else {
-                      if (regexInXWeeksPos > -1) {
-                        this.datefound = true;
-
-                        matches = this.textStringLower.match(regexInXWeeksMatch);
-                        if (!!matches[3]) {
-                          this.datefound = true;
-                          this.startdate.setDate(defaultDate.getDate() + (Number(matches[3]) * 7));
-                        }
-                        this.setSubjectEndPos(regexInXWeeksPos);
-                      } else {
-                        if (regexInXMonthsPos > -1) {
-                          this.datefound = true;
-
-                          matches = this.textStringLower.match(regexInXMonthsMatch);
-                          if (!!matches[3]) {
-                            this.datefound = true;
-                            this.startdate.setMonth(defaultDate.getMonth() + Number(matches[3]));
-                          }
-                          this.setSubjectEndPos(regexInXMonthsPos);
-                        } else {
-                          if (regexInXYearsPos > -1) {
-                            this.datefound = true;
-
-                            matches = this.textStringLower.match(regexInXYearsMatch);
-                            if (!!matches[3]) {
-                              this.datefound = true;
-                              this.startdate.setFullYear(defaultDate.getFullYear() + Number(matches[3]));
-                            }
-                            this.setSubjectEndPos(regexInXYearsPos);
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
         }
+      },
+      {
+        regex: /([^a-z]+|^)(tonight)|(this evening)([^a-z]+|$)/,
+        handler: function() {
+          this.datefound = true;
+          this.starttimefound = true;
+          this.startdate.setHours(EVENING_TIME, 0, 0, 0);
+          this.pmKeywordFound = true;
+        }
+      },
+      {
+        regex: /([^a-z]+|^)(in the morning)([^a-z]+|$)/,
+        handler: function() {
+          this.datefound = true;
+          this.starttimefound = true;
+          this.startdate.setDate(defaultDate.getDate() + 1);
+          this.startdate.setHours(MORNING_TIME, 0, 0, 0);
+        }
+      },
+      {
+        regex: /([^a-z]+|^)(next week)([^a-z]+|$)/,
+        handler: function() {
+          this.datefound = true;
+          this.startdate.setDate(defaultDate.getDate() + 7);
+        }
+      },
+      {
+        regex: /([^a-z]+|^)(next month)([^a-z]+|$)/,
+        handler: function() {
+          this.datefound = true;
+          this.startdate.setMonth(defaultDate.getMonth() + 1);
+        }
+      },
+      {
+        regex: /([^a-z]+|^)(next year)([^a-z]+|$)/,
+        handler: function() {
+          this.datefound = true;
+          this.startdate.setFullYear(defaultDate.getFullYear() + 1);
+        }
+      }
+    ];
+
+    var numericPatterns = [
+      {
+        regex: /([^a-z]+|^)(in )([1-9][0-9]*)( days| day)([^a-z]+|$)/,
+        handler: function(matches) {
+          this.startdate.setDate(defaultDate.getDate() + Number(matches[3]));
+        }
+      },
+      {
+        regex: /([^a-z]+|^)(in )([1-9][0-9]*)( weeks| week)([^a-z]+|$)/,
+        handler: function(matches) {
+          this.startdate.setDate(defaultDate.getDate() + (Number(matches[3]) * 7));
+        }
+      },
+      {
+        regex: /([^a-z]+|^)(in )([1-9][0-9]*)( months| month)([^a-z]+|$)/,
+        handler: function(matches) {
+          this.startdate.setMonth(defaultDate.getMonth() + Number(matches[3]));
+        }
+      },
+      {
+        regex: /([^a-z]+|^)(in )([1-9][0-9]*)( years| year)([^a-z]+|$)/,
+        handler: function(matches) {
+          this.startdate.setFullYear(defaultDate.getFullYear() + Number(matches[3]));
+        }
+      }
+    ];
+
+    // Check simple keywords first
+    for (var i = 0; i < dateKeywords.length; i++) {
+      var keyword = dateKeywords[i];
+      var pos = this.textStringLower.search(keyword.regex);
+      
+      if (pos > -1) {
+        keyword.handler.call(this);
+        this.setSubjectEndPos(pos);
+        return;
+      }
+    }
+
+    // Check numeric patterns
+    for (var j = 0; j < numericPatterns.length; j++) {
+      var pattern = numericPatterns[j];
+      var numericPos = this.textStringLower.search(pattern.regex);
+      
+      if (numericPos > -1) {
+        var matches = this.textStringLower.match(pattern.regex);
+        if (matches && matches[3]) {
+          this.datefound = true;
+          pattern.handler.call(this, matches);
+        }
+        this.setSubjectEndPos(numericPos);
+        return;
       }
     }
   };
