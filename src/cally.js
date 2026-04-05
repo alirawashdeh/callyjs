@@ -293,191 +293,217 @@ function Cally(text, currentdate) {
 
   // Find time keyword - e.g. Morning, Afternoon, Evening
   this.findTimeKeyword = function() {
-    var regexMorningPos = this.textStringLower.search(/([^a-z]+|^)(morning)([^a-z]+|$)/);
-    var regexAfternoonPos = this.textStringLower.search(/([^a-z]+|^)(afternoon)([^a-z]+|$)/);
-    var regexNightPos = this.textStringLower.search(/([^a-z]+|^)(night)|(evening)([^a-z]+|$)/);
-    var regexNoonPos = this.textStringLower.search(/([^a-z]+|^)(noon)|(midday)([^a-z]+|$)/);
-    var regexInXHoursMatch = /([^a-z]+|^)(in )([1-9][0-9]*)( hours| hour)([^a-z]+|$)/;
-    var regexInXHoursPos = this.textStringLower.search(regexInXHoursMatch);
-    var regexInXMinutesMatch = /([^a-z]+|^)(in )([1-9][0-9]*)( minutes| minute)([^a-z]+|$)/;
-    var regexInXMinutesPos = this.textStringLower.search(regexInXMinutesMatch);
-    var matches;
-
-    if (regexMorningPos > -1) {
-      this.starttimefound = true;
-      this.startdate.setHours(MORNING_TIME, 0, 0, 0);
-      this.setSubjectEndPos(regexMorningPos);
-    } else {
-      if (regexAfternoonPos > -1) {
-        this.starttimefound = true;
-        this.startdate.setHours(AFTERNOON_TIME, 0, 0, 0);
-        this.setSubjectEndPos(regexAfternoonPos);
-        this.pmKeywordFound = true;
-      } else {
-        if (regexNightPos > -1) {
+    var timeKeywords = [
+      {
+        regex: /([^a-z]+|^)(morning)([^a-z]+|$)/,
+        handler: function() {
+          this.starttimefound = true;
+          this.startdate.setHours(MORNING_TIME, 0, 0, 0);
+        }
+      },
+      {
+        regex: /([^a-z]+|^)(afternoon)([^a-z]+|$)/,
+        handler: function() {
+          this.starttimefound = true;
+          this.startdate.setHours(AFTERNOON_TIME, 0, 0, 0);
+          this.pmKeywordFound = true;
+        }
+      },
+      {
+        regex: /([^a-z]+|^)(night)|(evening)([^a-z]+|$)/,
+        handler: function() {
           this.starttimefound = true;
           this.startdate.setHours(EVENING_TIME, 0, 0, 0);
-          this.setSubjectEndPos(regexNightPos);
           this.pmKeywordFound = true;
-        } else {
-          if (regexNoonPos > -1) {
-            this.starttimefound = true;
-            this.startdate.setHours(MIDDAY_TIME, 0, 0, 0);
-            this.setSubjectEndPos(regexNoonPos);
-          } else {
-            if (regexInXHoursPos > -1) {
-              matches = this.textStringLower.match(regexInXHoursMatch);
-              if (!!matches[3]) {
-                this.starttimefound = true;
-                this.startdate.setHours(this.startdate.getHours() + Number(matches[3]));
-              }
-              this.setSubjectEndPos(regexInXHoursPos);
-            } else {
-              if (regexInXMinutesPos > -1) {
-                matches = this.textStringLower.match(regexInXMinutesMatch);
-                if (!!matches[3]) {
-                  this.starttimefound = true;
-                  this.startdate.setMinutes(this.startdate.getMinutes() + Number(matches[3]));
-                }
-                this.setSubjectEndPos(regexInXMinutesPos);
-              }
-            }
-          }
         }
+      },
+      {
+        regex: /([^a-z]+|^)(noon)|(midday)([^a-z]+|$)/,
+        handler: function() {
+          this.starttimefound = true;
+          this.startdate.setHours(MIDDAY_TIME, 0, 0, 0);
+        }
+      }
+    ];
+
+    var timePatterns = [
+      {
+        regex: /([^a-z]+|^)(in )([1-9][0-9]*)( hours| hour)([^a-z]+|$)/,
+        handler: function(matches) {
+          this.starttimefound = true;
+          this.startdate.setHours(this.startdate.getHours() + Number(matches[3]));
+        }
+      },
+      {
+        regex: /([^a-z]+|^)(in )([1-9][0-9]*)( minutes| minute)([^a-z]+|$)/,
+        handler: function(matches) {
+          this.starttimefound = true;
+          this.startdate.setMinutes(this.startdate.getMinutes() + Number(matches[3]));
+        }
+      }
+    ];
+
+    // Check simple keywords first
+    for (var i = 0; i < timeKeywords.length; i++) {
+      var keyword = timeKeywords[i];
+      var pos = this.textStringLower.search(keyword.regex);
+      
+      if (pos > -1) {
+        keyword.handler.call(this);
+        this.setSubjectEndPos(pos);
+        return;
+      }
+    }
+
+    // Check time patterns
+    for (var j = 0; j < timePatterns.length; j++) {
+      var pattern = timePatterns[j];
+      var timePos = this.textStringLower.search(pattern.regex);
+      
+      if (timePos > -1) {
+        var matches = this.textStringLower.match(pattern.regex);
+        if (matches && matches[3]) {
+          pattern.handler.call(this, matches);
+        }
+        this.setSubjectEndPos(timePos);
+        return;
       }
     }
   };
 
   // Find time number - e.g. 3PM, 15:00
   this.findTimeNumber = function() {
-
     var expressionPrefix = "([^a-z]+|^)(at |starting at )";
     var expressionSuffix = "([^a-z]+|$)";
-    var regexAtNumberPMPos = this.textStringLower.search(expressionPrefix + "*[0-1]*[0-9](:[0-5][0-9])?(pm| pm)" + expressionSuffix);
-    var regexAtNumberAMPos = this.textStringLower.search(expressionPrefix + "*[0-1]*[0-9](:[0-5][0-9])?(am| am)"+ expressionSuffix);
-    var regexAtNumber24HrPos = this.textStringLower.search(expressionPrefix + "*[0-2]*[0-9](:[0-5][0-9])" + expressionSuffix);
-    var regex4DigitTimePos = this.textStringLower.search(expressionPrefix + "*[0-2][0-9]([0-5][0-9])" + expressionSuffix);
-    var regexAtNumberPMorAMMatch = /([0-1]*[0-9])(:([0-5][0-9]))?( pm|pm| am|am)/;
-    var regexAtNumberMatch = /([0-2]*[0-9])(:([0-5][0-9]))/;
-    var regex4DigitMatch = /([0-2][0-9])([0-5][0-9])/;
-    var regex2DigitMatch = expressionPrefix + "([0-1]*[0-9])" + expressionSuffix;
-    var regex2DigitTimePos = this.textStringLower.search(regex2DigitMatch);
-    var regexHalfPastMatch = expressionPrefix + "*(half past |half )([1-9][0-9]*)" + expressionSuffix;
-    var regexHalfPastPos = this.textStringLower.search(regexHalfPastMatch);
-    var regexQuarterPastMatch = expressionPrefix + "*(quarter past )([1-9][0-9]*)" + expressionSuffix;
-    var regexQuarterPastPos = this.textStringLower.search(regexQuarterPastMatch);
-    var regexQuarterToMatch = expressionPrefix + "*(quarter to )([1-9][0-9]*)" + expressionSuffix;
-    var regexQuarterToPos = this.textStringLower.search(regexQuarterToMatch);
-    var regexTimeNumberWordMatch = expressionPrefix + "(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)(am| am)?(pm| pm)?" + expressionSuffix;
-    var regexTimeNumberWordPos = this.textStringLower.search(regexTimeNumberWordMatch);
 
-    var matches;
-    var hours = 0;
-
-    if (regexAtNumberPMPos > -1) {
-      this.starttimefound = true;
-      matches = this.textStringLower.match(regexAtNumberPMorAMMatch);
-      hours = Number(matches[1]) + 12;
-      if (hours == 24) {
-        hours = 12;
-      }
-      this.startdate.setHours(hours, 0, 0, 0);
-      if (!!matches[3]) {
-        this.startdate.setMinutes(Number(matches[3]));
-      }
-      this.setSubjectEndPos(regexAtNumberPMPos);
-    } else {
-      if (regexAtNumberAMPos > -1) {
-        this.starttimefound = true;
-        matches = this.textStringLower.match(regexAtNumberPMorAMMatch);
-        hours = Number(matches[1]);
-        if (hours == 12) {
-          hours = 0;
-        }
-        this.startdate.setHours(hours, 0, 0, 0);
-        if (!!matches[3]) {
-          this.startdate.setMinutes(Number(matches[3]));
-        }
-        this.setSubjectEndPos(regexAtNumberAMPos);
-      } else {
-        if (regexAtNumber24HrPos > -1) {
-          this.starttimefound = true;
-          matches = this.textStringLower.match(regexAtNumberMatch);
-          hours = Number(matches[1]);
+    var timePatterns = [
+      {
+        name: 'PM time',
+        searchRegex: expressionPrefix + "*[0-1]*[0-9](:[0-5][0-9])?(pm| pm)" + expressionSuffix,
+        matchRegex: /([0-1]*[0-9])(:([0-5][0-9]))?( pm|pm| am|am)/,
+        handler: function(matches) {
+          var hours = Number(matches[1]) + 12;
+          if (hours == 24) hours = 12;
           this.startdate.setHours(hours, 0, 0, 0);
           if (!!matches[3]) {
             this.startdate.setMinutes(Number(matches[3]));
           }
-          this.setSubjectEndPos(regexAtNumber24HrPos);
-        } else {
-          if (regex4DigitTimePos > -1) {
-            this.starttimefound = true;
-            matches = this.textStringLower.match(regex4DigitMatch);
-            hours = Number(matches[1]);
+        }
+      },
+      {
+        name: 'AM time',
+        searchRegex: expressionPrefix + "*[0-1]*[0-9](:[0-5][0-9])?(am| am)" + expressionSuffix,
+        matchRegex: /([0-1]*[0-9])(:([0-5][0-9]))?( pm|pm| am|am)/,
+        handler: function(matches) {
+          var hours = Number(matches[1]);
+          if (hours == 12) hours = 0;
+          this.startdate.setHours(hours, 0, 0, 0);
+          if (!!matches[3]) {
+            this.startdate.setMinutes(Number(matches[3]));
+          }
+        }
+      },
+      {
+        name: '24-hour time',
+        searchRegex: expressionPrefix + "*[0-2]*[0-9](:[0-5][0-9])" + expressionSuffix,
+        matchRegex: /([0-2]*[0-9])(:([0-5][0-9]))/,
+        handler: function(matches) {
+          var hours = Number(matches[1]);
+          this.startdate.setHours(hours, 0, 0, 0);
+          if (!!matches[3]) {
+            this.startdate.setMinutes(Number(matches[3]));
+          }
+        }
+      },
+      {
+        name: '4-digit time',
+        searchRegex: expressionPrefix + "*[0-2][0-9]([0-5][0-9])" + expressionSuffix,
+        matchRegex: /([0-2][0-9])([0-5][0-9])/,
+        handler: function(matches) {
+          var hours = Number(matches[1]);
+          this.startdate.setHours(hours, 0, 0, 0);
+          if (matches[2] !== null) {
+            this.startdate.setMinutes(Number(matches[2]));
+          }
+        }
+      },
+      {
+        name: '2-digit time',
+        searchRegex: expressionPrefix + "([0-1]*[0-9])" + expressionSuffix,
+        matchRegex: expressionPrefix + "([0-1]*[0-9])" + expressionSuffix,
+        handler: function(matches) {
+          var hours = Number(matches[3]);
+          if (hours <= 12) {
+            if (!this.datefound && hours <= this.startdate.getHours()) {
+              hours += 12;
+            }
             this.startdate.setHours(hours, 0, 0, 0);
-            if (matches[2] !== null) {
-              this.startdate.setMinutes(Number(matches[2]));
+          }
+        }
+      },
+      {
+        name: 'Half past',
+        searchRegex: expressionPrefix + "*(half past |half )([1-9][0-9]*)" + expressionSuffix,
+        matchRegex: expressionPrefix + "*(half past |half )([1-9][0-9]*)" + expressionSuffix,
+        handler: function(matches) {
+          var hours = Number(matches[4]);
+          this.startdate.setHours(hours, 30, 0, 0);
+        }
+      },
+      {
+        name: 'Quarter past',
+        searchRegex: expressionPrefix + "*(quarter past )([1-9][0-9]*)" + expressionSuffix,
+        matchRegex: expressionPrefix + "*(quarter past )([1-9][0-9]*)" + expressionSuffix,
+        handler: function(matches) {
+          var hours = Number(matches[4]);
+          this.startdate.setHours(hours, 15, 0, 0);
+        }
+      },
+      {
+        name: 'Quarter to',
+        searchRegex: expressionPrefix + "*(quarter to )([1-9][0-9]*)" + expressionSuffix,
+        matchRegex: expressionPrefix + "*(quarter to )([1-9][0-9]*)" + expressionSuffix,
+        handler: function(matches) {
+          var hours = Number(matches[4]) - 1;
+          this.startdate.setHours(hours, 45, 0, 0);
+        }
+      },
+      {
+        name: 'Time number words',
+        searchRegex: expressionPrefix + "(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)(am| am)?(pm| pm)?" + expressionSuffix,
+        matchRegex: expressionPrefix + "(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)(am| am)?(pm| pm)?" + expressionSuffix,
+        handler: function(matches) {
+          var hours = this.convertTimeNumber(matches[3]);
+          if (hours <= 12) {
+            if (!this.datefound && hours <= this.startdate.getHours()) {
+              hours += 12;
             }
-            this.setSubjectEndPos(regex4DigitTimePos);
-          } else {
-            if (regex2DigitTimePos > -1) {
-              this.starttimefound = true;
-              matches = this.textStringLower.match(regex2DigitMatch);
-              hours = Number(matches[3]);
-              if (hours <= 12) {
-                if (!this.datefound && hours <= this.startdate.getHours()) {
-                  hours += 12;
-                }
-                this.startdate.setHours(hours, 0, 0, 0);
-                this.setSubjectEndPos(regex2DigitTimePos);
-              }
-            } else {
-              if (regexHalfPastPos > -1) {
-                this.starttimefound = true;
-                matches = this.textStringLower.match(regexHalfPastMatch);
-                hours = Number(matches[4]);
-                this.startdate.setHours(hours, 30, 0, 0);
-                this.setSubjectEndPos(regexHalfPastPos);
-              } else {
-                if (regexQuarterPastPos > -1) {
-                  this.starttimefound = true;
-                  matches = this.textStringLower.match(regexQuarterPastMatch);
-                  hours = Number(matches[4]);
-                  this.startdate.setHours(hours, 15, 0, 0);
-                  this.setSubjectEndPos(regexQuarterPastPos);
-                } else {
-                  if (regexQuarterToPos > -1) {
-                    this.starttimefound = true;
-                    matches = this.textStringLower.match(regexQuarterToMatch);
-                    hours = Number(matches[4]) - 1;
-                    this.startdate.setHours(hours, 45, 0, 0);
-                    this.setSubjectEndPos(regexQuarterToPos);
-                  } else {
-                    if (regexTimeNumberWordPos > -1) {
-                      this.starttimefound = true;
-                      matches = this.textStringLower.match(regexTimeNumberWordMatch);
-                      hours = this.convertTimeNumber(matches[3]);
-
-                      if (hours <= 12) {
-                        if (!this.datefound && hours <= this.startdate.getHours()) {
-                          hours += 12;
-                        }
-                      }
-                      this.startdate.setHours(hours, 0, 0, 0);
-                      if(matches[5]){
-                        this.pmKeywordFound = true;
-                      }
-                      this.setSubjectEndPos(regexTimeNumberWordPos);
-                    }
-                  }
-                }
-              }
-            }
+          }
+          this.startdate.setHours(hours, 0, 0, 0);
+          if(matches[5]){
+            this.pmKeywordFound = true;
           }
         }
       }
+    ];
+
+    // Check each time pattern
+    for (var i = 0; i < timePatterns.length; i++) {
+      var pattern = timePatterns[i];
+      var pos = this.textStringLower.search(pattern.searchRegex);
+      
+      if (pos > -1) {
+        this.starttimefound = true;
+        var matches = this.textStringLower.match(pattern.matchRegex);
+        if (matches) {
+          pattern.handler.call(this, matches);
+        }
+        this.setSubjectEndPos(pos);
+        break;
+      }
     }
 
+    // Apply PM adjustment if needed
     if (this.pmKeywordFound) {
       if (this.startdate.getHours() <= 12) {
         this.startdate.setHours(this.startdate.getHours() + 12);
