@@ -520,37 +520,37 @@ function Cally(text, currentdate) {
   };
 
 
-  // Find duration - e.g. for 2 hours
+  // Find duration - e.g. for 2 hours or for one hour
   this.findDuration = function() {
     var durationPatterns = [
       {
         name: 'minutes',
-        regex: /([^a-z]+|^)(for )([1-9][0-9]*)( minutes| mins| min| minute)([^a-z]+|$)/,
+        regex: /([^a-z]+|^)(for )([1-9][0-9]*|one|two|three|four|five|six|seven|eight|nine|a|an)( minutes| mins| min| minute)([^a-z]+|$)/,
         multiplier: 60000 // milliseconds in a minute
       },
       {
         name: 'hours', 
-        regex: /([^a-z]+|^)(for )([1-9][0-9]*)( hours| hour)([^a-z]+|$)/,
+        regex: /([^a-z]+|^)(for )([1-9][0-9]*|one|two|three|four|five|six|seven|eight|nine|a|an)( hours| hour)([^a-z]+|$)/,
         multiplier: 3600000 // milliseconds in an hour
       },
       {
         name: 'days',
-        regex: /([^a-z]+|^)(for )([1-9][0-9]*)( days| day)([^a-z]+|$)/,
+        regex: /([^a-z]+|^)(for )([1-9][0-9]*|one|two|three|four|five|six|seven|eight|nine|a|an)( days| day)([^a-z]+|$)/,
         multiplier: 86400000 // milliseconds in a day
       },
       {
         name: 'weeks',
-        regex: /([^a-z]+|^)(for )([1-9][0-9]*)( weeks| week| wk| wks)([^a-z]+|$)/,
+        regex: /([^a-z]+|^)(for )([1-9][0-9]*|one|two|three|four|five|six|seven|eight|nine|a|an)( weeks| week| wk| wks)([^a-z]+|$)/,
         multiplier: 604800000 // milliseconds in a week (7 days)
       },
       {
         name: 'months',
-        regex: /([^a-z]+|^)(for )([1-9][0-9]*)( months| month)([^a-z]+|$)/,
+        regex: /([^a-z]+|^)(for )([1-9][0-9]*|one|two|three|four|five|six|seven|eight|nine|a|an)( months| month)([^a-z]+|$)/,
         isMonth: true // Special handling for months
       },
       {
         name: 'years',
-        regex: /([^a-z]+|^)(for )([1-9][0-9]*)( years| year)([^a-z]+|$)/,
+        regex: /([^a-z]+|^)(for )([1-9][0-9]*|one|two|three|four|five|six|seven|eight|nine|a|an)( years| year)([^a-z]+|$)/,
         isYear: true // Special handling for years
       }
     ];
@@ -569,15 +569,22 @@ function Cally(text, currentdate) {
             this.starttimefound = true;
           }
           
+          // Convert word number to digit, handling "a" and "an" as 1
+          var duration = this.convertTimeNumber(matches[3]);
+          if (duration === 0 && (matches[3] === 'a' || matches[3] === 'an')) {
+            duration = 1;
+          }
+          duration = duration || parseInt(matches[3]) || 0;
+          
           // Special handling for months (can't use milliseconds)
           if (pattern.isMonth) {
             this.enddate = new Date(this.startdate);
-            this.enddate.setMonth(this.enddate.getMonth() + Number(matches[3]));
+            this.enddate.setMonth(this.enddate.getMonth() + duration);
           } else if (pattern.isYear) {
             this.enddate = new Date(this.startdate);
-            this.enddate.setFullYear(this.enddate.getFullYear() + Number(matches[3]));
+            this.enddate.setFullYear(this.enddate.getFullYear() + duration);
           } else {
-            this.enddate = new Date(this.startdate.getTime() + Number(matches[3]) * pattern.multiplier);
+            this.enddate = new Date(this.startdate.getTime() + duration * pattern.multiplier);
           }
 
           if((this.enddate.getDate() != this.startdate.getDate()) ||

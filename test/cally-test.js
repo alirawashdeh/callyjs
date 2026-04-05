@@ -1303,6 +1303,25 @@ describe('Cally', function() {
       assert(appt.enddate.getHours() == dateClean.getHours() + 1);
       assert(appt.enddate.getMinutes() == dateClean.getMinutes());
     });
+
+ it("Can find duration using time words, for example: Meet John for one hour", function() {
+      var appt;
+      var date = new Date("August 31, 2016 10:30:00"); // Set explicit current time
+      appt = new Cally("Meet John for one hour", date);
+      
+      assert(appt.subjectfound);
+      assert(appt.subject == "Meet John");
+      assert(appt.starttimefound);
+      assert(appt.endtimefound);
+
+      var dateClean = new Date("August 31, 2016 10:30:00");
+      assert(appt.startdate.getDate() == dateClean.getDate());
+      assert(appt.startdate.getMonth() == dateClean.getMonth());
+      assert(appt.startdate.getFullYear() == dateClean.getFullYear());
+      assert(appt.startdate.getHours() == dateClean.getHours());
+      assert(appt.enddate.getHours() == dateClean.getHours() + 1);
+      assert(appt.enddate.getMinutes() == dateClean.getMinutes());
+    });
   });
 
 });
