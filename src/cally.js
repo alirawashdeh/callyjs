@@ -540,8 +540,14 @@ function Cally(text, currentdate) {
         var matches = this.textStringLower.match(pattern.regex);
         if (matches && matches[3]) {
           this.endtimefound = true;
+          
+          // If no explicit start time was found, set default start time
+          if (!this.starttimefound) {
+            this.starttimefound = true;
+          }
           this.enddate = new Date(this.enddate.getTime() + Number(matches[3]) * pattern.multiplier);
         }
+        this.setSubjectEndPos(pos);
         break;
       }
     }
