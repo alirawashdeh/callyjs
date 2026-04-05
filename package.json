@@ -1,7 +1,7 @@
 {
   "name": "callyjs",
   "title": "CallyJS",
-  "version": "1.0.11",
+  "version": "1.0.12",
   "description": "JavaScript library to parse plain English into a calendar appointment - e.g. 'Meet John tomorrow night at 9'",
   "main": "dist/cally-min.js",
   "repository": {
@@ -9,7 +9,7 @@
     "url": "https://github.com/alirawashdeh/callyjs.git"
   },
   "devDependencies": {
-    "jshint": "^2.10.2",
+    "jshint": "^2.9.5",
     "mocha": "^8.2.1",
     "uglify-js": "2.7.3"
   },
