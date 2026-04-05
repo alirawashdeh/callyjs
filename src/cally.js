@@ -514,41 +514,37 @@ function Cally(text, currentdate) {
 
   // Find duration - e.g. for 2 hours
   this.findDuration = function() {
-
-    var regexForXDaysMatch = /([^a-z]+|^)(for )([1-9][0-9]*)( days| day)([^a-z]+|$)/;
-    var regexForXDaysPos = this.textStringLower.search(regexForXDaysMatch);
-    var regexForXHoursMatch = /([^a-z]+|^)(for )([1-9][0-9]*)( hours| hour)([^a-z]+|$)/;
-    var regexForXHoursPos = this.textStringLower.search(regexForXHoursMatch);
-    var regexForXMinutesMatch = /([^a-z]+|^)(for )([1-9][0-9]*)( minutes| mins| min| minute)([^a-z]+|$)/;
-    var regexForXMinutesPos = this.textStringLower.search(regexForXMinutesMatch);
-
-    var matches;
-
-    if (regexForXDaysPos > -1) {
-      matches = this.textStringLower.match(regexForXDaysMatch);
-      if (!!matches[3]) {
-        this.endtimefound = true;
-        this.enddate = new Date(this.enddate.getTime() + Number(matches[3])*86400000);
+    var durationPatterns = [
+      {
+        name: 'days',
+        regex: /([^a-z]+|^)(for )([1-9][0-9]*)( days| day)([^a-z]+|$)/,
+        multiplier: 86400000 // milliseconds in a day
+      },
+      {
+        name: 'hours', 
+        regex: /([^a-z]+|^)(for )([1-9][0-9]*)( hours| hour)([^a-z]+|$)/,
+        multiplier: 3600000 // milliseconds in an hour
+      },
+      {
+        name: 'minutes',
+        regex: /([^a-z]+|^)(for )([1-9][0-9]*)( minutes| mins| min| minute)([^a-z]+|$)/,
+        multiplier: 60000 // milliseconds in a minute
       }
-    } else {
-      if (regexForXHoursPos > -1) {
-        matches = this.textStringLower.match(regexForXHoursMatch);
-        if (!!matches[3]) {
-          this.endtimefound = true;
-          this.enddate = new Date(this.enddate.getTime() + Number(matches[3])*3600000);
-        }
-      } else {
-        if (regexForXMinutesPos > -1) {
+    ];
 
-          matches = this.textStringLower.match(regexForXMinutesMatch);
-          if (!!matches[3]) {
-            this.endtimefound = true;
-            this.enddate = new Date(this.enddate.getTime() + Number(matches[3])*60000);
-          }
+    for (var i = 0; i < durationPatterns.length; i++) {
+      var pattern = durationPatterns[i];
+      var pos = this.textStringLower.search(pattern.regex);
+      
+      if (pos > -1) {
+        var matches = this.textStringLower.match(pattern.regex);
+        if (matches && matches[3]) {
+          this.endtimefound = true;
+          this.enddate = new Date(this.enddate.getTime() + Number(matches[3]) * pattern.multiplier);
         }
+        break;
       }
     }
-
   };
 
 
