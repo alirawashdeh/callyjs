@@ -54,61 +54,27 @@ function Cally(text, currentdate) {
 
   // Find day of week e.g. Monday, Mon, Tuesday etc.
   this.findDayOfWeek = function() {
-    var foundDay = -1;
+    var days = [
+      { name: 'sun|sunday', index: 0 },
+      { name: 'monday|mon', index: 1 },
+      { name: 'tuesday|tues|tue', index: 2 },
+      { name: 'wednesday|wed', index: 3 },
+      { name: 'thursday|thurs|thur|thu', index: 4 },
+      { name: 'friday|fri', index: 5 },
+      { name: 'saturday|sat', index: 6 }
+    ];
 
-    var regexSundayPos = this.textStringLower.search(/([^a-z]+|^)(on |this )*(sun|sunday)([^a-z]+|$)/);
-    var regexMondayPos = this.textStringLower.search(/([^a-z]+|^)(on |this )*(monday|mon)([^a-z]+|$)/);
-    var regexTuesdayPos = this.textStringLower.search(/([^a-z]+|^)(on |this )*(tuesday|tues|tue)([^a-z]+|$)/);
-    var regexWednesdayPos = this.textStringLower.search(/([^a-z]+|^)(on |this )*(wednesday|wed)([^a-z]+|$)/);
-    var regexThursdayPos = this.textStringLower.search(/([^a-z]+|^)(on |this )*(thursday|thurs|thur|thu)([^a-z]+|$)/);
-    var regexFridayPos = this.textStringLower.search(/([^a-z]+|^)(on |this )*(friday|fri)([^a-z]+|$)/);
-    var regexSaturdayPos = this.textStringLower.search(/([^a-z]+|^)(on |this )*(saturday|sat)([^a-z]+|$)/);
+    for (var i = 0; i < days.length; i++) {
+      var day = days[i];
+      var regexPattern = new RegExp('([^a-z]+|^)(on |this )*(' + day.name + ')([^a-z]+|$)');
+      var regexPos = this.textStringLower.search(regexPattern);
 
-    var nextFound = false;
-
-    if (regexSundayPos > -1) {
-      foundDay = 0;
-      this.setSubjectEndPos(regexSundayPos);
-      nextFound = this.findNext(regexSundayPos);
-    } else {
-      if (regexMondayPos > -1) {
-        foundDay = 1;
-        this.setSubjectEndPos(regexMondayPos);
-        nextFound = this.findNext(regexMondayPos);
-      } else {
-        if (regexTuesdayPos > -1) {
-          foundDay = 2;
-          this.setSubjectEndPos(regexTuesdayPos);
-          nextFound = this.findNext(regexTuesdayPos);
-        } else {
-          if (regexWednesdayPos > -1) {
-            foundDay = 3;
-            this.setSubjectEndPos(regexWednesdayPos);
-            nextFound = this.findNext(regexWednesdayPos);
-          } else {
-            if (regexThursdayPos > -1) {
-              foundDay = 4;
-              this.setSubjectEndPos(regexThursdayPos);
-              nextFound = this.findNext(regexThursdayPos);
-            } else {
-              if (regexFridayPos > -1) {
-                foundDay = 5;
-                this.setSubjectEndPos(regexFridayPos);
-                nextFound = this.findNext(regexFridayPos);
-              } else {
-                if (regexSaturdayPos > -1) {
-                  foundDay = 6;
-                  this.setSubjectEndPos(regexSaturdayPos);
-                  nextFound = this.findNext(regexSaturdayPos);
-                }
-              }
-            }
-          }
-        }
+      if (regexPos > -1) {
+        var nextFound = this.findNext(regexPos);
+        this.setSubjectEndPos(regexPos);
+        this.setDayOfWeek(day.index, nextFound);
+        break;
       }
-    }
-    if (foundDay > -1) {
-      this.setDayOfWeek(foundDay, nextFound);
     }
   };
 
