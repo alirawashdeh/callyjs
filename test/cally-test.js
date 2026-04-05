@@ -1225,6 +1225,44 @@ describe('Cally', function() {
       assert(appt.subject == "Meet John");
     });
 
+    it("Can find duration - for X weeks", function() {
+      var appt;
+      var date = new Date("August 31, 2016 00:00:00");
+      appt = new Cally("Meet John tomorrow morning for 2 weeks", date);
+      assert(appt.subjectfound);
+      assert(appt.datefound);
+      assert(appt.starttimefound);
+      assert(appt.endtimefound);
+
+      
+      var dateClean = new Date("August 31, 2016 00:00:00");
+      dateClean.setDate(dateClean.getDate() + 1);
+      assert(appt.startdate.getDate() == dateClean.getDate());
+      assert(appt.startdate.getHours() == morningTime);
+      assert(appt.enddate.getMonth() == 8);
+      assert(appt.enddate.getDate() == 15);
+      assert(appt.enddate.getMinutes() == 0);
+      assert(appt.subject == "Meet John");
+    });
+
+     it("Can find duration - for X months", function() {
+      var appt;
+      var date = new Date("August 31, 2016 00:00:00");
+      appt = new Cally("Meet John tomorrow morning for 2 months", date);
+      assert(appt.subjectfound);
+      assert(appt.datefound);
+      assert(appt.starttimefound);
+      assert(appt.endtimefound);
+      
+      var dateClean = new Date("August 31, 2016 00:00:00");
+      dateClean.setDate(dateClean.getDate() + 1);
+      assert(appt.startdate.getDate() == dateClean.getDate());
+      assert(appt.startdate.getHours() == morningTime);
+      assert(appt.enddate.getMonth() == 10);
+      assert(appt.enddate.getMinutes() == 0);
+      assert(appt.subject == "Meet John");
+    });
+
     it("Can handle duration with no start time", function() {
       var appt;
       var date = new Date("August 31, 2016 10:30:00"); // Set explicit current time

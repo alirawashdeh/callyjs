@@ -523,9 +523,9 @@ function Cally(text, currentdate) {
   this.findDuration = function() {
     var durationPatterns = [
       {
-        name: 'days',
-        regex: /([^a-z]+|^)(for )([1-9][0-9]*)( days| day)([^a-z]+|$)/,
-        multiplier: 86400000 // milliseconds in a day
+        name: 'minutes',
+        regex: /([^a-z]+|^)(for )([1-9][0-9]*)( minutes| mins| min| minute)([^a-z]+|$)/,
+        multiplier: 60000 // milliseconds in a minute
       },
       {
         name: 'hours', 
@@ -533,9 +533,19 @@ function Cally(text, currentdate) {
         multiplier: 3600000 // milliseconds in an hour
       },
       {
-        name: 'minutes',
-        regex: /([^a-z]+|^)(for )([1-9][0-9]*)( minutes| mins| min| minute)([^a-z]+|$)/,
-        multiplier: 60000 // milliseconds in a minute
+        name: 'days',
+        regex: /([^a-z]+|^)(for )([1-9][0-9]*)( days| day)([^a-z]+|$)/,
+        multiplier: 86400000 // milliseconds in a day
+      },
+      {
+        name: 'weeks',
+        regex: /([^a-z]+|^)(for )([1-9][0-9]*)( weeks| week| wk| wks)([^a-z]+|$)/,
+        multiplier: 604800000 // milliseconds in a week (7 days)
+      },
+      {
+        name: 'months',
+        regex: /([^a-z]+|^)(for )([1-9][0-9]*)( months| month)([^a-z]+|$)/,
+        isMonth: true // Special handling for months
       }
     ];
 
@@ -552,7 +562,14 @@ function Cally(text, currentdate) {
           if (!this.starttimefound) {
             this.starttimefound = true;
           }
-          this.enddate = new Date(this.startdate.getTime() + Number(matches[3]) * pattern.multiplier);
+          
+          // Special handling for months (can't use milliseconds)
+          if (pattern.isMonth) {
+            this.enddate = new Date(this.startdate);
+            this.enddate.setMonth(this.enddate.getMonth() + Number(matches[3]));
+          } else {
+            this.enddate = new Date(this.startdate.getTime() + Number(matches[3]) * pattern.multiplier);
+          }
         }
         this.setSubjectEndPos(pos);
         break;
