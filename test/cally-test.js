@@ -1235,7 +1235,7 @@ describe('Cally', function() {
       assert(appt.starttimefound);
       assert(appt.endtimefound);
 
-      var dateClean = new Date("August 31, 2016 00:00:00");
+      var dateClean = new Date("August 31, 2016 10:30:00");
       assert(appt.startdate.getDate() == dateClean.getDate());
       assert(appt.startdate.getMonth() == dateClean.getMonth());
       assert(appt.startdate.getFullYear() == dateClean.getFullYear());

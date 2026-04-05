@@ -34,18 +34,25 @@ function Cally(text, currentdate) {
       this.findDateAndMonth();
       this.findTimeKeyword(); // e.g. evening, morning, in 1 hour
       this.findTimeNumber(); // e.g. 3PM, 15:00
+      this.findDuration(); // e.g. for 2 hours
 
       if (this.starttimefound === false) {
         this.startdate.setHours(0, 0, 0, 0);
       }
 
-      this.enddate = new Date(this.startdate);
+      if (!this.endtimefound) {
+        this.enddate = new Date(this.startdate);
+      }
 
-      this.findDuration(); // e.g. for 2 hours
       this.findAllDayKeyword(); // e.g. all day
       this.populateSubject(); // e.g. 'Meet John'
 
       if (this.endtimefound === false) {
+        this.enddate.setHours(0, 0, 0, 0);
+      }
+      
+      // For all-day events, reset end time to midnight even if duration was found
+      if (this.allday && this.endtimefound) {
         this.enddate.setHours(0, 0, 0, 0);
       }
     }
@@ -545,7 +552,7 @@ function Cally(text, currentdate) {
           if (!this.starttimefound) {
             this.starttimefound = true;
           }
-          this.enddate = new Date(this.enddate.getTime() + Number(matches[3]) * pattern.multiplier);
+          this.enddate = new Date(this.startdate.getTime() + Number(matches[3]) * pattern.multiplier);
         }
         this.setSubjectEndPos(pos);
         break;
