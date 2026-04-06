@@ -704,122 +704,97 @@ function Cally(text, currentdate) {
 
   // Find until time - e.g. "until 5pm", "until half past 9", "until quarter to 9", "until 11PM", "until 2200", "until 21:00", "until eight"
   this.findUntil = function() {
-    var untilRegex, pos, matches, hours, minutes;
-    
-    // Test for AM/PM times (unified)
-    untilRegex = /([^a-z]+|^)(until )([0-9]{1,2})(?::([0-5][0-9]))?(am|pm| am| pm)([^a-z]+|$)/;
-    pos = this.textStringLower.search(untilRegex);
-    
-    if (pos > -1) {
-      matches = this.textStringLower.match(untilRegex);
-      if (matches && matches[3]) {
-        hours = parseInt(matches[3]);
-        minutes = matches[4] ? parseInt(matches[4]) : 0;
-        var period = matches[5];
-        
-        // Handle PM times
-        if (period && period.includes('pm') && hours <= 12) {
-          hours += 12;
+    var untilPrefix = "([^a-z]+|^)(until )";
+    var untilSuffix = "([^a-z]+|$)";
+
+    var untilPatterns = [
+      {
+        name: 'Time with AM/PM',
+        searchRegex: untilPrefix + "([0-9]{1,2})(?::([0-5][0-9]))?(am|pm| am| pm)" + untilSuffix,
+        handler: function(matches) {
+          var hours = parseInt(matches[3]);
+          var minutes = matches[4] ? parseInt(matches[4]) : 0;
+          var period = matches[5];
+          
+          // Handle PM times
+          if (period && period.includes('pm') && hours <= 12) {
+            hours += 12;
+          }
+          // Handle AM times
+          if (period && period.includes('am') && hours == 12) {
+            hours = 0;
+          }
+          // Handle edge case for 24 PM
+          if (hours == 24) hours = 12;
+          
+          this.setEndTime(hours, minutes);
         }
-        // Handle AM times
-        if (period && period.includes('am') && hours == 12) {
-          hours = 0;
+      },
+      {
+        name: '24-hour time',
+        searchRegex: untilPrefix + "([0-2]{1}[0-9]):([0-5][0-9])" + untilSuffix,
+        handler: function(matches) {
+          this.setEndTime(parseInt(matches[3]), parseInt(matches[4]));
         }
-        // Handle edge case for 24 PM
-        if (hours == 24) hours = 12;
-        
-        this.setEndTime(hours, minutes);
-        this.setSubjectEndPos(pos);
-        return;
+      },
+      {
+        name: '4-digit time',
+        searchRegex: untilPrefix + "([0-2]{1}[0-9])([0-5][0-9])" + untilSuffix,
+        handler: function(matches) {
+          this.setEndTime(parseInt(matches[3]), parseInt(matches[4]));
+        }
+      },
+      {
+        name: 'Word numbers',
+        searchRegex: untilPrefix + "(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)" + untilSuffix,
+        handler: function(matches) {
+          var hours = this.convertTimeNumber(matches[3]);
+          this.setEndTime(hours, 0);
+        }
+      },
+      {
+        name: 'Simple numeric',
+        searchRegex: untilPrefix + "([0-9]{1,2})" + untilSuffix,
+        handler: function(matches) {
+          this.setEndTime(parseInt(matches[3]), 0);
+        }
       }
-    }
-    
-    // Test for 24-hour time with colon
-    untilRegex = /([^a-z]+|^)(until )([0-2]{1}[0-9]):([0-5][0-9])([^a-z]+|$)/;
-    pos = this.textStringLower.search(untilRegex);
-    
-    if (pos > -1) {
-      matches = this.textStringLower.match(untilRegex);
-      if (matches && matches[3]) {
-        hours = parseInt(matches[3]);
-        minutes = parseInt(matches[4]);
-        
-        this.setEndTime(hours, minutes);
-        this.setSubjectEndPos(pos);
-        return;
-      }
-    }
-    
-    // Test for 4-digit time (military)
-    untilRegex = /([^a-z]+|^)(until )([0-2]{1}[0-9])([0-5][0-9])([^a-z]+|$)/;
-    pos = this.textStringLower.search(untilRegex);
-    
-    if (pos > -1) {
-      matches = this.textStringLower.match(untilRegex);
-      if (matches && matches[3]) {
-        hours = parseInt(matches[3]);
-        minutes = parseInt(matches[4]);
-        
-        this.setEndTime(hours, minutes);
-        this.setSubjectEndPos(pos);
-        return;
-      }
-    }
-    
-    // Data-driven colloquial time patterns for "until"
+    ];
+
+    // Add data-driven colloquial time patterns
+    var self = this;
     this.colloquialPatterns.forEach(function(config) {
       // Word numbers version
-      untilRegex = new RegExp('([^a-z]+|^)(until )(' + config.search + ')(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)([^a-z]+|$)');
-      pos = this.textStringLower.search(untilRegex);
-      
-      if (pos > -1) {
-        matches = this.textStringLower.match(untilRegex);
-        if (matches && matches[4]) {
-          this.handleColloquialTime(matches, config, true, true);
-          this.setSubjectEndPos(pos);
-          return;
+      untilPatterns.push({
+        name: config.name + ' (words)',
+        searchRegex: untilPrefix + "(" + config.search + ")(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)" + untilSuffix,
+        handler: function(matches) {
+          var colloquialMatches = ['dummy', 'dummy', 'dummy', 'dummy', matches[4]];
+          self.handleColloquialTime(colloquialMatches, config, true, true);
         }
-      }
+      });
       
       // Numeric version
-      untilRegex = new RegExp('([^a-z]+|^)(until )(' + config.search + ')([1-9][0-9]*)([^a-z]+|$)');
-      pos = this.textStringLower.search(untilRegex);
+      untilPatterns.push({
+        name: config.name + ' (numeric)',
+        searchRegex: untilPrefix + "(" + config.search + ")([1-9][0-9]*)" + untilSuffix,
+        handler: function(matches) {
+          var colloquialMatches = ['dummy', 'dummy', 'dummy', 'dummy', matches[4]];
+          self.handleColloquialTime(colloquialMatches, config, true, false);
+        }
+      });
+    });
+
+    // Check each until pattern
+    for (var i = 0; i < untilPatterns.length; i++) {
+      var pattern = untilPatterns[i];
+      var pos = this.textStringLower.search(pattern.searchRegex);
       
       if (pos > -1) {
-        matches = this.textStringLower.match(untilRegex);
-        if (matches && matches[4]) {
-          this.handleColloquialTime(matches, config, true, false);
-          this.setSubjectEndPos(pos);
-          return;
+        var matches = this.textStringLower.match(pattern.searchRegex);
+        if (matches) {
+          pattern.handler.call(this, matches);
         }
-      }
-    }.bind(this));
-    
-    // Test for word numbers (one to nine)
-    untilRegex = /([^a-z]+|^)(until )(one|two|three|four|five|six|seven|eight|nine)([^a-z]+|$)/;
-    pos = this.textStringLower.search(untilRegex);
-    
-    if (pos > -1) {
-      matches = this.textStringLower.match(untilRegex);
-      if (matches && matches[3]) {
-        hours = this.convertTimeNumber(matches[3]);
-        
-        this.setEndTime(hours, 0);
-        this.setSubjectEndPos(pos);
-        return;
-      }
-    }
-    
-    // Test for simple numeric time (fallback)
-    untilRegex = /([^a-z]+|^)(until )([0-9]{1,2})([^a-z]+|$)/;
-    pos = this.textStringLower.search(untilRegex);
-    
-    if (pos > -1) {
-      matches = this.textStringLower.match(untilRegex);
-      if (matches && matches[3]) {
-        hours = parseInt(matches[3]);
-        
-        this.setEndTime(hours, 0);
         this.setSubjectEndPos(pos);
         return;
       }
