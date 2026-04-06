@@ -26,6 +26,29 @@ function Cally(text, currentdate) {
   this.textString = "";
   this.textStringLower = "";
 
+  // Helper functions
+  this.isUntilExpression = function(pos) {
+    var beforeMatch = this.textStringLower.substring(0, pos);
+    return beforeMatch.match(/\buntil\b/);
+  };
+
+  this.setStartTime = function(hours, minutes) {
+    minutes = minutes || 0;
+    this.startdate.setHours(hours, minutes, 0, 0);
+    this.starttimefound = true;
+  };
+
+  this.setEndTime = function(hours, minutes) {
+    minutes = minutes || 0;
+    this.enddate = new Date(this.startdate.getFullYear(), this.startdate.getMonth(), this.startdate.getDate(), hours, minutes, 0, 0);
+    this.endtimefound = true;
+  };
+
+  this.createDateFromTime = function(hours, minutes) {
+    minutes = minutes || 0;
+    return new Date(this.startdate.getFullYear(), this.startdate.getMonth(), this.startdate.getDate(), hours, minutes, 0, 0);
+  };
+
   this.parse = function() {
     if (this.textString.length > 0) {
       this.findDayOfWeek(); //e.g. Monday Tuesday
@@ -393,11 +416,8 @@ function Cally(text, currentdate) {
         handler: function(matches) {
           var hours = Number(matches[1]) + 12;
           if (hours == 24) hours = 12;
-          this.startdate.setHours(hours, 0, 0, 0);
-          if (!!matches[3]) {
-            this.startdate.setMinutes(Number(matches[3]));
-          }
-          this.starttimefound = true;
+          var minutes = matches[3] ? Number(matches[3]) : 0;
+          this.setStartTime(hours, minutes);
         }
       },
       {
@@ -407,11 +427,8 @@ function Cally(text, currentdate) {
         handler: function(matches) {
           var hours = Number(matches[1]);
           if (hours == 12) hours = 0;
-          this.startdate.setHours(hours, 0, 0, 0);
-          if (!!matches[3]) {
-            this.startdate.setMinutes(Number(matches[3]));
-          }
-          this.starttimefound = true;
+          var minutes = matches[3] ? Number(matches[3]) : 0;
+          this.setStartTime(hours, minutes);
         }
       },
       {
@@ -420,11 +437,8 @@ function Cally(text, currentdate) {
         matchRegex: /([0-2]*[0-9])(:([0-5][0-9]))/,
         handler: function(matches) {
           var hours = Number(matches[1]);
-          this.startdate.setHours(hours, 0, 0, 0);
-          if (!!matches[3]) {
-            this.startdate.setMinutes(Number(matches[3]));
-          }
-          this.starttimefound = true;
+          var minutes = matches[3] ? Number(matches[3]) : 0;
+          this.setStartTime(hours, minutes);
         }
       },
       {
@@ -433,11 +447,8 @@ function Cally(text, currentdate) {
         matchRegex: /([0-2][0-9])([0-5][0-9])/,
         handler: function(matches) {
           var hours = Number(matches[1]);
-          this.startdate.setHours(hours, 0, 0, 0);
-          if (matches[2] !== null) {
-            this.startdate.setMinutes(Number(matches[2]));
-          }
-          this.starttimefound = true;
+          var minutes = matches[2] !== null ? Number(matches[2]) : 0;
+          this.setStartTime(hours, minutes);
         }
       },
       {
@@ -450,9 +461,8 @@ function Cally(text, currentdate) {
             if (!this.startdatefound && hours <= this.startdate.getHours()) {
               hours += 12;
             }
-            this.startdate.setHours(hours, 0, 0, 0);
           }
-          this.starttimefound = true;
+          this.setStartTime(hours, 0);
         }
       },
       {
@@ -461,8 +471,7 @@ function Cally(text, currentdate) {
         matchRegex: expressionPrefix + "*(half past |half )([1-9][0-9]*)" + expressionSuffix,
         handler: function(matches) {
           var hours = Number(matches[4]);
-          this.startdate.setHours(hours, 30, 0, 0);
-          this.starttimefound = true;
+          this.setStartTime(hours, 30);
         }
       },
       {
@@ -471,8 +480,7 @@ function Cally(text, currentdate) {
         matchRegex: expressionPrefix + "*(quarter past )([1-9][0-9]*)" + expressionSuffix,
         handler: function(matches) {
           var hours = Number(matches[4]);
-          this.startdate.setHours(hours, 15, 0, 0);
-          this.starttimefound = true;
+          this.setStartTime(hours, 15);
         }
       },
       {
@@ -481,8 +489,7 @@ function Cally(text, currentdate) {
         matchRegex: expressionPrefix + "*(quarter to )([1-9][0-9]*)" + expressionSuffix,
         handler: function(matches) {
           var hours = Number(matches[4]) - 1;
-          this.startdate.setHours(hours, 45, 0, 0);
-          this.starttimefound = true;
+          this.setStartTime(hours, 45);
         }
       },
       {
@@ -496,11 +503,10 @@ function Cally(text, currentdate) {
               hours += 12;
             }
           }
-          this.startdate.setHours(hours, 0, 0, 0);
+          this.setStartTime(hours, 0);
           if(matches[5]){
             this.pmKeywordFound = true;
           }
-          this.starttimefound = true;
         }
       }
     ];
@@ -512,12 +518,10 @@ function Cally(text, currentdate) {
       
       if (pos > -1) {
         // Check if this time is part of an "until" expression
-        var beforeMatch = this.textStringLower.substring(0, pos);
-        if (beforeMatch.match(/\buntil\b/)) {
+        if (this.isUntilExpression(pos)) {
           continue; // Skip times that are part of "until X"
         }
         
-        this.starttimefound = true;
         var matches = this.textStringLower.match(pattern.matchRegex);
         if (matches) {
           pattern.handler.call(this, matches);
@@ -692,10 +696,7 @@ function Cally(text, currentdate) {
         }
         if (hours == 24) hours = 12;
         
-        // Set end time based on start date
-        this.enddate = new Date(this.startdate.getFullYear(), this.startdate.getMonth(), this.startdate.getDate(), hours, minutes, 0, 0);
-        this.endtimefound = true;
-        
+        this.setEndTime(hours, minutes);
         this.setSubjectEndPos(pos);
         return;
       }
@@ -714,10 +715,7 @@ function Cally(text, currentdate) {
         // Handle AM
         if (hours == 12) hours = 0;
         
-        // Set end time based on start date
-        this.enddate = new Date(this.startdate.getFullYear(), this.startdate.getMonth(), this.startdate.getDate(), hours, minutes, 0, 0);
-        this.endtimefound = true;
-        
+        this.setEndTime(hours, minutes);
         this.setSubjectEndPos(pos);
         return;
       }
@@ -733,10 +731,7 @@ function Cally(text, currentdate) {
         hours = parseInt(matches[3]);
         minutes = parseInt(matches[4]);
         
-        // Set end time based on start date
-        this.enddate = new Date(this.startdate.getFullYear(), this.startdate.getMonth(), this.startdate.getDate(), hours, minutes, 0, 0);
-        this.endtimefound = true;
-        
+        this.setEndTime(hours, minutes);
         this.setSubjectEndPos(pos);
         return;
       }
@@ -752,10 +747,7 @@ function Cally(text, currentdate) {
         hours = parseInt(matches[3]);
         minutes = parseInt(matches[4]);
         
-        // Set end time based on start date
-        this.enddate = new Date(this.startdate.getFullYear(), this.startdate.getMonth(), this.startdate.getDate(), hours, minutes, 0, 0);
-        this.endtimefound = true;
-        
+        this.setEndTime(hours, minutes);
         this.setSubjectEndPos(pos);
         return;
       }
@@ -770,10 +762,7 @@ function Cally(text, currentdate) {
       if (matches && matches[4]) {
         hours = this.convertTimeNumber(matches[4]);
         
-        // Set end time based on start date
-        this.enddate = new Date(this.startdate.getFullYear(), this.startdate.getMonth(), this.startdate.getDate(), hours, 30, 0, 0);
-        this.endtimefound = true;
-        
+        this.setEndTime(hours, 30);
         this.setSubjectEndPos(pos);
         return;
       }
@@ -788,10 +777,7 @@ function Cally(text, currentdate) {
       if (matches && matches[4]) {
         hours = parseInt(matches[4]);
         
-        // Set end time based on start date
-        this.enddate = new Date(this.startdate.getFullYear(), this.startdate.getMonth(), this.startdate.getDate(), hours, 30, 0, 0);
-        this.endtimefound = true;
-        
+        this.setEndTime(hours, 30);
         this.setSubjectEndPos(pos);
         return;
       }
@@ -806,10 +792,7 @@ function Cally(text, currentdate) {
       if (matches && matches[4]) {
         hours = this.convertTimeNumber(matches[4]);
         
-        // Set end time based on start date
-        this.enddate = new Date(this.startdate.getFullYear(), this.startdate.getMonth(), this.startdate.getDate(), hours, 30, 0, 0);
-        this.endtimefound = true;
-        
+        this.setEndTime(hours, 30);
         this.setSubjectEndPos(pos);
         return;
       }
@@ -824,10 +807,7 @@ function Cally(text, currentdate) {
       if (matches && matches[4]) {
         hours = parseInt(matches[4]);
         
-        // Set end time based on start date
-        this.enddate = new Date(this.startdate.getFullYear(), this.startdate.getMonth(), this.startdate.getDate(), hours, 30, 0, 0);
-        this.endtimefound = true;
-        
+        this.setEndTime(hours, 30);
         this.setSubjectEndPos(pos);
         return;
       }
@@ -842,10 +822,7 @@ function Cally(text, currentdate) {
       if (matches && matches[4]) {
         hours = this.convertTimeNumber(matches[4]);
         
-        // Set end time based on start date
-        this.enddate = new Date(this.startdate.getFullYear(), this.startdate.getMonth(), this.startdate.getDate(), hours, 15, 0, 0);
-        this.endtimefound = true;
-        
+        this.setEndTime(hours, 15);
         this.setSubjectEndPos(pos);
         return;
       }
@@ -860,10 +837,7 @@ function Cally(text, currentdate) {
       if (matches && matches[4]) {
         hours = parseInt(matches[4]);
         
-        // Set end time based on start date
-        this.enddate = new Date(this.startdate.getFullYear(), this.startdate.getMonth(), this.startdate.getDate(), hours, 15, 0, 0);
-        this.endtimefound = true;
-        
+        this.setEndTime(hours, 15);
         this.setSubjectEndPos(pos);
         return;
       }
@@ -878,10 +852,7 @@ function Cally(text, currentdate) {
       if (matches && matches[4]) {
         hours = this.convertTimeNumber(matches[4]);
         
-        // Set end time based on start date
-        this.enddate = new Date(this.startdate.getFullYear(), this.startdate.getMonth(), this.startdate.getDate(), hours - 1, 45, 0, 0);
-        this.endtimefound = true;
-        
+        this.setEndTime(hours - 1, 45);
         this.setSubjectEndPos(pos);
         return;
       }
@@ -896,10 +867,7 @@ function Cally(text, currentdate) {
       if (matches && matches[4]) {
         hours = parseInt(matches[4]);
         
-        // Set end time based on start date
-        this.enddate = new Date(this.startdate.getFullYear(), this.startdate.getMonth(), this.startdate.getDate(), hours - 1, 45, 0, 0);
-        this.endtimefound = true;
-        
+        this.setEndTime(hours - 1, 45);
         this.setSubjectEndPos(pos);
         return;
       }
@@ -914,10 +882,7 @@ function Cally(text, currentdate) {
       if (matches && matches[3]) {
         hours = this.convertTimeNumber(matches[3]);
         
-        // Set end time based on start date
-        this.enddate = new Date(this.startdate.getFullYear(), this.startdate.getMonth(), this.startdate.getDate(), hours, 0, 0, 0);
-        this.endtimefound = true;
-        
+        this.setEndTime(hours, 0);
         this.setSubjectEndPos(pos);
         return;
       }
@@ -932,10 +897,7 @@ function Cally(text, currentdate) {
       if (matches && matches[3]) {
         hours = parseInt(matches[3]);
         
-        // Set end time based on start date
-        this.enddate = new Date(this.startdate.getFullYear(), this.startdate.getMonth(), this.startdate.getDate(), hours, 0, 0, 0);
-        this.endtimefound = true;
-        
+        this.setEndTime(hours, 0);
         this.setSubjectEndPos(pos);
         return;
       }
