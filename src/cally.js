@@ -410,24 +410,25 @@ function Cally(text, currentdate) {
 
     var timePatterns = [
       {
-        name: 'PM time',
-        searchRegex: expressionPrefix + "*[0-1]*[0-9](:[0-5][0-9])?(pm| pm)" + expressionSuffix,
-        matchRegex: /([0-1]*[0-9])(:([0-5][0-9]))?( pm|pm| am|am)/,
-        handler: function(matches) {
-          var hours = Number(matches[1]) + 12;
-          if (hours == 24) hours = 12;
-          var minutes = matches[3] ? Number(matches[3]) : 0;
-          this.setStartTime(hours, minutes);
-        }
-      },
-      {
-        name: 'AM time',
-        searchRegex: expressionPrefix + "*[0-1]*[0-9](:[0-5][0-9])?(am| am)" + expressionSuffix,
-        matchRegex: /([0-1]*[0-9])(:([0-5][0-9]))?( pm|pm| am|am)/,
+        name: 'Time with AM/PM',
+        searchRegex: expressionPrefix + "*[0-1]*[0-9](:[0-5][0-9])?(am|pm| am| pm)" + expressionSuffix,
+        matchRegex: /([0-1]*[0-9])(:([0-5][0-9]))?(am|pm| am| pm)/,
         handler: function(matches) {
           var hours = Number(matches[1]);
-          if (hours == 12) hours = 0;
+          var period = matches[4];
           var minutes = matches[3] ? Number(matches[3]) : 0;
+          
+          // Handle PM times
+          if (period && period.includes('pm') && hours < 12) {
+            hours += 12;
+          }
+          // Handle AM times
+          if (period && period.includes('am') && hours == 12) {
+            hours = 0;
+          }
+          // Handle edge case for 24 PM
+          if (hours == 24) hours = 12;
+          
           this.setStartTime(hours, minutes);
         }
       },
@@ -680,8 +681,8 @@ function Cally(text, currentdate) {
   this.findUntil = function() {
     var untilRegex, pos, matches, hours, minutes;
     
-    // Test for PM times first (most specific)
-    untilRegex = /([^a-z]+|^)(until )([0-9]{1,2})(?::([0-5][0-9]))?(pm| pm)([^a-z]+|$)/;
+    // Test for AM/PM times (unified)
+    untilRegex = /([^a-z]+|^)(until )([0-9]{1,2})(?::([0-5][0-9]))?(am|pm| am| pm)([^a-z]+|$)/;
     pos = this.textStringLower.search(untilRegex);
     
     if (pos > -1) {
@@ -689,31 +690,18 @@ function Cally(text, currentdate) {
       if (matches && matches[3]) {
         hours = parseInt(matches[3]);
         minutes = matches[4] ? parseInt(matches[4]) : 0;
+        var period = matches[5];
         
-        // Handle PM
-        if (hours <= 12) {
+        // Handle PM times
+        if (period && period.includes('pm') && hours <= 12) {
           hours += 12;
         }
+        // Handle AM times
+        if (period && period.includes('am') && hours == 12) {
+          hours = 0;
+        }
+        // Handle edge case for 24 PM
         if (hours == 24) hours = 12;
-        
-        this.setEndTime(hours, minutes);
-        this.setSubjectEndPos(pos);
-        return;
-      }
-    }
-    
-    // Test for AM times
-    untilRegex = /([^a-z]+|^)(until )([0-9]{1,2})(?::([0-5][0-9]))?(am| am)([^a-z]+|$)/;
-    pos = this.textStringLower.search(untilRegex);
-    
-    if (pos > -1) {
-      matches = this.textStringLower.match(untilRegex);
-      if (matches && matches[3]) {
-        hours = parseInt(matches[3]);
-        minutes = matches[4] ? parseInt(matches[4]) : 0;
-        
-        // Handle AM
-        if (hours == 12) hours = 0;
         
         this.setEndTime(hours, minutes);
         this.setSubjectEndPos(pos);
