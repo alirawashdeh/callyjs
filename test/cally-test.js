@@ -1430,6 +1430,14 @@ describe('Cally', function() {
       assert(appt.enddate.getDate() == 31);
       assert(!appt.enddatefound);
       assert(appt.subject == "Meet John");
+
+      appt = new Cally("Meet John from ten until two", new Date("August 31, 2016 00:00:00"));
+      assert(appt.startdate.getHours() == 10);
+      assert(appt.enddate.getHours() == 14);
+      assert(appt.startdate.getDate() == 31);
+      assert(appt.enddate.getDate() == 31);
+      assert(!appt.enddatefound);
+      assert(appt.subject == "Meet John");
     });
 
   });
