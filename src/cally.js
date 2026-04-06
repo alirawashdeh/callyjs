@@ -36,6 +36,7 @@ function Cally(text, currentdate) {
       this.findTimeKeyword(); // e.g. evening, morning, in 1 hour
       this.findTimeNumber(); // e.g. 3PM, 15:00
       this.findDuration(); // e.g. for 2 hours
+      this.findUntil(); // e.g. until 5pm
 
       if (this.starttimefound === false) {
         this.startdate.setHours(0, 0, 0, 0);
@@ -396,6 +397,7 @@ function Cally(text, currentdate) {
           if (!!matches[3]) {
             this.startdate.setMinutes(Number(matches[3]));
           }
+          this.starttimefound = true;
         }
       },
       {
@@ -409,6 +411,7 @@ function Cally(text, currentdate) {
           if (!!matches[3]) {
             this.startdate.setMinutes(Number(matches[3]));
           }
+          this.starttimefound = true;
         }
       },
       {
@@ -421,6 +424,7 @@ function Cally(text, currentdate) {
           if (!!matches[3]) {
             this.startdate.setMinutes(Number(matches[3]));
           }
+          this.starttimefound = true;
         }
       },
       {
@@ -433,6 +437,7 @@ function Cally(text, currentdate) {
           if (matches[2] !== null) {
             this.startdate.setMinutes(Number(matches[2]));
           }
+          this.starttimefound = true;
         }
       },
       {
@@ -447,6 +452,7 @@ function Cally(text, currentdate) {
             }
             this.startdate.setHours(hours, 0, 0, 0);
           }
+          this.starttimefound = true;
         }
       },
       {
@@ -456,6 +462,7 @@ function Cally(text, currentdate) {
         handler: function(matches) {
           var hours = Number(matches[4]);
           this.startdate.setHours(hours, 30, 0, 0);
+          this.starttimefound = true;
         }
       },
       {
@@ -465,6 +472,7 @@ function Cally(text, currentdate) {
         handler: function(matches) {
           var hours = Number(matches[4]);
           this.startdate.setHours(hours, 15, 0, 0);
+          this.starttimefound = true;
         }
       },
       {
@@ -474,6 +482,7 @@ function Cally(text, currentdate) {
         handler: function(matches) {
           var hours = Number(matches[4]) - 1;
           this.startdate.setHours(hours, 45, 0, 0);
+          this.starttimefound = true;
         }
       },
       {
@@ -491,6 +500,7 @@ function Cally(text, currentdate) {
           if(matches[5]){
             this.pmKeywordFound = true;
           }
+          this.starttimefound = true;
         }
       }
     ];
@@ -501,6 +511,12 @@ function Cally(text, currentdate) {
       var pos = this.textStringLower.search(pattern.searchRegex);
       
       if (pos > -1) {
+        // Check if this time is part of an "until" expression
+        var beforeMatch = this.textStringLower.substring(0, pos);
+        if (beforeMatch.match(/\buntil\b/)) {
+          continue; // Skip times that are part of "until X"
+        }
+        
         this.starttimefound = true;
         var matches = this.textStringLower.match(pattern.matchRegex);
         if (matches) {
@@ -653,6 +669,276 @@ function Cally(text, currentdate) {
     this.subject = this.textString.substring(subjectstart, subjectend).trim();
     if ((!!this.subject) & (this.subject.length > 0)) {
       this.subjectfound = true;
+    }
+  };
+
+  // Find until time - e.g. "until 5pm", "until half past 9", "until quarter to 9", "until 11PM", "until 2200", "until 21:00", "until eight"
+  this.findUntil = function() {
+    var untilRegex, pos, matches, hours, minutes;
+    
+    // Test for PM times first (most specific)
+    untilRegex = /([^a-z]+|^)(until )([0-9]{1,2})(?::([0-5][0-9]))?(pm| pm)([^a-z]+|$)/;
+    pos = this.textStringLower.search(untilRegex);
+    
+    if (pos > -1) {
+      matches = this.textStringLower.match(untilRegex);
+      if (matches && matches[3]) {
+        hours = parseInt(matches[3]);
+        minutes = matches[4] ? parseInt(matches[4]) : 0;
+        
+        // Handle PM
+        if (hours <= 12) {
+          hours += 12;
+        }
+        if (hours == 24) hours = 12;
+        
+        // Set end time based on start date
+        this.enddate = new Date(this.startdate.getFullYear(), this.startdate.getMonth(), this.startdate.getDate(), hours, minutes, 0, 0);
+        this.endtimefound = true;
+        
+        this.setSubjectEndPos(pos);
+        return;
+      }
+    }
+    
+    // Test for AM times
+    untilRegex = /([^a-z]+|^)(until )([0-9]{1,2})(?::([0-5][0-9]))?(am| am)([^a-z]+|$)/;
+    pos = this.textStringLower.search(untilRegex);
+    
+    if (pos > -1) {
+      matches = this.textStringLower.match(untilRegex);
+      if (matches && matches[3]) {
+        hours = parseInt(matches[3]);
+        minutes = matches[4] ? parseInt(matches[4]) : 0;
+        
+        // Handle AM
+        if (hours == 12) hours = 0;
+        
+        // Set end time based on start date
+        this.enddate = new Date(this.startdate.getFullYear(), this.startdate.getMonth(), this.startdate.getDate(), hours, minutes, 0, 0);
+        this.endtimefound = true;
+        
+        this.setSubjectEndPos(pos);
+        return;
+      }
+    }
+    
+    // Test for 24-hour time with colon
+    untilRegex = /([^a-z]+|^)(until )([0-2]{1}[0-9]):([0-5][0-9])([^a-z]+|$)/;
+    pos = this.textStringLower.search(untilRegex);
+    
+    if (pos > -1) {
+      matches = this.textStringLower.match(untilRegex);
+      if (matches && matches[3]) {
+        hours = parseInt(matches[3]);
+        minutes = parseInt(matches[4]);
+        
+        // Set end time based on start date
+        this.enddate = new Date(this.startdate.getFullYear(), this.startdate.getMonth(), this.startdate.getDate(), hours, minutes, 0, 0);
+        this.endtimefound = true;
+        
+        this.setSubjectEndPos(pos);
+        return;
+      }
+    }
+    
+    // Test for 4-digit time (military)
+    untilRegex = /([^a-z]+|^)(until )([0-2]{1}[0-9])([0-5][0-9])([^a-z]+|$)/;
+    pos = this.textStringLower.search(untilRegex);
+    
+    if (pos > -1) {
+      matches = this.textStringLower.match(untilRegex);
+      if (matches && matches[3]) {
+        hours = parseInt(matches[3]);
+        minutes = parseInt(matches[4]);
+        
+        // Set end time based on start date
+        this.enddate = new Date(this.startdate.getFullYear(), this.startdate.getMonth(), this.startdate.getDate(), hours, minutes, 0, 0);
+        this.endtimefound = true;
+        
+        this.setSubjectEndPos(pos);
+        return;
+      }
+    }
+    
+    // Test for half past with word numbers
+    untilRegex = /([^a-z]+|^)(until )(half past )(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)([^a-z]+|$)/;
+    pos = this.textStringLower.search(untilRegex);
+    
+    if (pos > -1) {
+      matches = this.textStringLower.match(untilRegex);
+      if (matches && matches[4]) {
+        hours = this.convertTimeNumber(matches[4]);
+        
+        // Set end time based on start date
+        this.enddate = new Date(this.startdate.getFullYear(), this.startdate.getMonth(), this.startdate.getDate(), hours, 30, 0, 0);
+        this.endtimefound = true;
+        
+        this.setSubjectEndPos(pos);
+        return;
+      }
+    }
+    
+    // Test for half past with numeric
+    untilRegex = /([^a-z]+|^)(until )(half past )([1-9][0-9]*)([^a-z]+|$)/;
+    pos = this.textStringLower.search(untilRegex);
+    
+    if (pos > -1) {
+      matches = this.textStringLower.match(untilRegex);
+      if (matches && matches[4]) {
+        hours = parseInt(matches[4]);
+        
+        // Set end time based on start date
+        this.enddate = new Date(this.startdate.getFullYear(), this.startdate.getMonth(), this.startdate.getDate(), hours, 30, 0, 0);
+        this.endtimefound = true;
+        
+        this.setSubjectEndPos(pos);
+        return;
+      }
+    }
+    
+    // Test for half with word numbers
+    untilRegex = /([^a-z]+|^)(until )(half )(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)([^a-z]+|$)/;
+    pos = this.textStringLower.search(untilRegex);
+    
+    if (pos > -1) {
+      matches = this.textStringLower.match(untilRegex);
+      if (matches && matches[4]) {
+        hours = this.convertTimeNumber(matches[4]);
+        
+        // Set end time based on start date
+        this.enddate = new Date(this.startdate.getFullYear(), this.startdate.getMonth(), this.startdate.getDate(), hours, 30, 0, 0);
+        this.endtimefound = true;
+        
+        this.setSubjectEndPos(pos);
+        return;
+      }
+    }
+    
+    // Test for half with numeric
+    untilRegex = /([^a-z]+|^)(until )(half )([1-9][0-9]*)([^a-z]+|$)/;
+    pos = this.textStringLower.search(untilRegex);
+    
+    if (pos > -1) {
+      matches = this.textStringLower.match(untilRegex);
+      if (matches && matches[4]) {
+        hours = parseInt(matches[4]);
+        
+        // Set end time based on start date
+        this.enddate = new Date(this.startdate.getFullYear(), this.startdate.getMonth(), this.startdate.getDate(), hours, 30, 0, 0);
+        this.endtimefound = true;
+        
+        this.setSubjectEndPos(pos);
+        return;
+      }
+    }
+    
+    // Test for quarter past with word numbers
+    untilRegex = /([^a-z]+|^)(until )(quarter past )(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)([^a-z]+|$)/;
+    pos = this.textStringLower.search(untilRegex);
+    
+    if (pos > -1) {
+      matches = this.textStringLower.match(untilRegex);
+      if (matches && matches[4]) {
+        hours = this.convertTimeNumber(matches[4]);
+        
+        // Set end time based on start date
+        this.enddate = new Date(this.startdate.getFullYear(), this.startdate.getMonth(), this.startdate.getDate(), hours, 15, 0, 0);
+        this.endtimefound = true;
+        
+        this.setSubjectEndPos(pos);
+        return;
+      }
+    }
+    
+    // Test for quarter past with numeric
+    untilRegex = /([^a-z]+|^)(until )(quarter past )([1-9][0-9]*)([^a-z]+|$)/;
+    pos = this.textStringLower.search(untilRegex);
+    
+    if (pos > -1) {
+      matches = this.textStringLower.match(untilRegex);
+      if (matches && matches[4]) {
+        hours = parseInt(matches[4]);
+        
+        // Set end time based on start date
+        this.enddate = new Date(this.startdate.getFullYear(), this.startdate.getMonth(), this.startdate.getDate(), hours, 15, 0, 0);
+        this.endtimefound = true;
+        
+        this.setSubjectEndPos(pos);
+        return;
+      }
+    }
+    
+    // Test for quarter to with word numbers
+    untilRegex = /([^a-z]+|^)(until )(quarter to )(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)([^a-z]+|$)/;
+    pos = this.textStringLower.search(untilRegex);
+    
+    if (pos > -1) {
+      matches = this.textStringLower.match(untilRegex);
+      if (matches && matches[4]) {
+        hours = this.convertTimeNumber(matches[4]);
+        
+        // Set end time based on start date
+        this.enddate = new Date(this.startdate.getFullYear(), this.startdate.getMonth(), this.startdate.getDate(), hours - 1, 45, 0, 0);
+        this.endtimefound = true;
+        
+        this.setSubjectEndPos(pos);
+        return;
+      }
+    }
+    
+    // Test for quarter to with numeric
+    untilRegex = /([^a-z]+|^)(until )(quarter to )([1-9][0-9]*)([^a-z]+|$)/;
+    pos = this.textStringLower.search(untilRegex);
+    
+    if (pos > -1) {
+      matches = this.textStringLower.match(untilRegex);
+      if (matches && matches[4]) {
+        hours = parseInt(matches[4]);
+        
+        // Set end time based on start date
+        this.enddate = new Date(this.startdate.getFullYear(), this.startdate.getMonth(), this.startdate.getDate(), hours - 1, 45, 0, 0);
+        this.endtimefound = true;
+        
+        this.setSubjectEndPos(pos);
+        return;
+      }
+    }
+    
+    // Test for word numbers (one to nine)
+    untilRegex = /([^a-z]+|^)(until )(one|two|three|four|five|six|seven|eight|nine)([^a-z]+|$)/;
+    pos = this.textStringLower.search(untilRegex);
+    
+    if (pos > -1) {
+      matches = this.textStringLower.match(untilRegex);
+      if (matches && matches[3]) {
+        hours = this.convertTimeNumber(matches[3]);
+        
+        // Set end time based on start date
+        this.enddate = new Date(this.startdate.getFullYear(), this.startdate.getMonth(), this.startdate.getDate(), hours, 0, 0, 0);
+        this.endtimefound = true;
+        
+        this.setSubjectEndPos(pos);
+        return;
+      }
+    }
+    
+    // Test for simple numeric time (fallback)
+    untilRegex = /([^a-z]+|^)(until )([0-9]{1,2})([^a-z]+|$)/;
+    pos = this.textStringLower.search(untilRegex);
+    
+    if (pos > -1) {
+      matches = this.textStringLower.match(untilRegex);
+      if (matches && matches[3]) {
+        hours = parseInt(matches[3]);
+        
+        // Set end time based on start date
+        this.enddate = new Date(this.startdate.getFullYear(), this.startdate.getMonth(), this.startdate.getDate(), hours, 0, 0, 0);
+        this.endtimefound = true;
+        
+        this.setSubjectEndPos(pos);
+        return;
+      }
     }
   };
 

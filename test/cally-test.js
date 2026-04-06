@@ -1322,6 +1322,62 @@ describe('Cally', function() {
       assert(appt.enddate.getHours() == dateClean.getHours() + 1);
       assert(appt.enddate.getMinutes() == dateClean.getMinutes());
     });
+
+
+   it("Can find duration - until X", function() {
+      var appt = new Cally("Meet John at 4 until 8", new Date("August 31, 2016 00:00:00"));
+      assert(appt.subjectfound);
+      assert(appt.starttimefound);
+      assert(appt.startdate.getHours() == 4);
+      assert(appt.endtimefound);
+      assert(appt.enddate.getHours() == 8);
+
+      appt = new Cally("Meet John at 4 until eight", new Date("August 31, 2016 00:00:00"));
+      assert(appt.startdate.getHours() == 4);
+      assert(appt.enddate.getHours() == 8);
+
+    });
+
+   it("Can find duration - until half past X", function() {
+      var appt;
+      appt = new Cally("Meet John at 5 until half past 7", new Date("August 31, 2016 00:00:00"));
+      assert(appt.startdate.getHours() == 5);
+      assert(appt.enddate.getHours() == 7);
+      assert(appt.enddate.getMinutes() == 30);
+
+      appt = new Cally("Meet John at 3 until half 6", new Date("August 31, 2016 00:00:00"));
+      assert(appt.startdate.getHours() == 3);
+      assert(appt.enddate.getHours() == 6);
+      assert(appt.enddate.getMinutes() == 30);
+    });
+
+   it("Can find duration - until quarter to/past X", function() {
+      var appt;
+      appt = new Cally("Meet John at 2 until quarter to 8", new Date("August 31, 2016 00:00:00"));
+      assert(appt.startdate.getHours() == 2);
+      assert(appt.enddate.getHours() == 7);
+      assert(appt.enddate.getMinutes() == 45);
+
+      appt = new Cally("Meet John at 2 until quarter past 3", new Date("August 31, 2016 00:00:00"));
+      assert(appt.startdate.getHours() == 2);
+      assert(appt.enddate.getHours() == 3);
+      assert(appt.enddate.getMinutes() == 15);
+    });
+
+   it("Can find duration - until XPM, XX:XX, XX:XXPM", function() {
+      var appt;
+      appt = new Cally("Meet John at 5am until 8pm", new Date("August 31, 2016 00:00:00"));
+      assert(appt.startdate.getHours() == 5);
+      assert(appt.enddate.getHours() == 20);
+
+      appt = new Cally("Meet John at 6 until 21:00", new Date("August 31, 2016 00:00:00"));
+      assert(appt.startdate.getHours() == 6);
+      assert(appt.enddate.getHours() == 21);
+
+      appt = new Cally("Meet John at 7 until 6:00PM", new Date("August 31, 2016 00:00:00"));
+      assert(appt.startdate.getHours() == 7);
+      assert(appt.enddate.getHours() == 18);
+    });
   });
 
 });
