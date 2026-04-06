@@ -49,6 +49,33 @@ function Cally(text, currentdate) {
     return new Date(this.startdate.getFullYear(), this.startdate.getMonth(), this.startdate.getDate(), hours, minutes, 0, 0);
   };
 
+  // Colloquial time patterns configuration
+  this.colloquialPatterns = [
+    {name: 'half past', search: 'half past ', minutes: 30, hourOffset: 0},
+    {name: 'half', search: 'half ', minutes: 30, hourOffset: 0},
+    {name: 'quarter past', search: 'quarter past ', minutes: 15, hourOffset: 0},
+    {name: 'quarter to', search: 'quarter to ', minutes: 45, hourOffset: -1}
+  ];
+
+  // Helper for colloquial time handling
+  this.handleColloquialTime = function(matches, config, isEnd, useWords) {
+    var hours;
+    if (useWords) {
+      hours = this.convertTimeNumber(matches[4]);
+    } else {
+      hours = Number(matches[4]);
+    }
+    
+    hours += config.hourOffset;
+    var minutes = config.minutes;
+    
+    if (isEnd) {
+      this.setEndTime(hours, minutes);
+    } else {
+      this.setStartTime(hours, minutes);
+    }
+  };
+
   this.parse = function() {
     if (this.textString.length > 0) {
       this.findDayOfWeek(); //e.g. Monday Tuesday
@@ -465,52 +492,50 @@ function Cally(text, currentdate) {
           }
           this.setStartTime(hours, 0);
         }
-      },
-      {
-        name: 'Half past',
-        searchRegex: expressionPrefix + "*(half past |half )([1-9][0-9]*)" + expressionSuffix,
-        matchRegex: expressionPrefix + "*(half past |half )([1-9][0-9]*)" + expressionSuffix,
-        handler: function(matches) {
-          var hours = Number(matches[4]);
-          this.setStartTime(hours, 30);
-        }
-      },
-      {
-        name: 'Quarter past',
-        searchRegex: expressionPrefix + "*(quarter past )([1-9][0-9]*)" + expressionSuffix,
-        matchRegex: expressionPrefix + "*(quarter past )([1-9][0-9]*)" + expressionSuffix,
-        handler: function(matches) {
-          var hours = Number(matches[4]);
-          this.setStartTime(hours, 15);
-        }
-      },
-      {
-        name: 'Quarter to',
-        searchRegex: expressionPrefix + "*(quarter to )([1-9][0-9]*)" + expressionSuffix,
-        matchRegex: expressionPrefix + "*(quarter to )([1-9][0-9]*)" + expressionSuffix,
-        handler: function(matches) {
-          var hours = Number(matches[4]) - 1;
-          this.setStartTime(hours, 45);
-        }
-      },
-      {
-        name: 'Time number words',
-        searchRegex: expressionPrefix + "(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)(am| am)?(pm| pm)?" + expressionSuffix,
-        matchRegex: expressionPrefix + "(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)(am| am)?(pm| pm)?" + expressionSuffix,
-        handler: function(matches) {
-          var hours = this.convertTimeNumber(matches[3]);
-          if (hours <= 12) {
-            if (!this.startdatefound && hours <= this.startdate.getHours()) {
-              hours += 12;
-            }
-          }
-          this.setStartTime(hours, 0);
-          if(matches[5]){
-            this.pmKeywordFound = true;
-          }
-        }
       }
     ];
+
+    // Add data-driven colloquial time patterns
+    var self = this;
+    this.colloquialPatterns.forEach(function(config) {
+      // Numeric version
+      timePatterns.push({
+        name: config.name + ' (numeric)',
+        searchRegex: expressionPrefix + "*(" + config.search + ")([1-9][0-9]*)" + expressionSuffix,
+        matchRegex: expressionPrefix + "*(" + config.search + ")([1-9][0-9]*)" + expressionSuffix,
+        handler: function(matches) {
+          self.handleColloquialTime(matches, config, false, false);
+        }
+      });
+      
+      // Word numbers version
+      timePatterns.push({
+        name: config.name + ' (words)',
+        searchRegex: expressionPrefix + "*(" + config.search + ")(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)" + expressionSuffix,
+        matchRegex: expressionPrefix + "*(" + config.search + ")(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)" + expressionSuffix,
+        handler: function(matches) {
+          self.handleColloquialTime(matches, config, false, true);
+        }
+      });
+    });
+
+    timePatterns.push({
+      name: 'Time number words',
+      searchRegex: expressionPrefix + "(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)(am| am)?(pm| pm)?" + expressionSuffix,
+      matchRegex: expressionPrefix + "(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)(am| am)?(pm| pm)?" + expressionSuffix,
+      handler: function(matches) {
+        var hours = this.convertTimeNumber(matches[3]);
+        if (hours <= 12) {
+          if (!this.startdatefound && hours <= this.startdate.getHours()) {
+            hours += 12;
+          }
+        }
+        this.setStartTime(hours, 0);
+        if(matches[5]){
+          this.pmKeywordFound = true;
+        }
+      }
+    });
 
     // Check each time pattern
     for (var i = 0; i < timePatterns.length; i++) {
@@ -741,125 +766,34 @@ function Cally(text, currentdate) {
       }
     }
     
-    // Test for half past with word numbers
-    untilRegex = /([^a-z]+|^)(until )(half past )(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)([^a-z]+|$)/;
-    pos = this.textStringLower.search(untilRegex);
-    
-    if (pos > -1) {
-      matches = this.textStringLower.match(untilRegex);
-      if (matches && matches[4]) {
-        hours = this.convertTimeNumber(matches[4]);
-        
-        this.setEndTime(hours, 30);
-        this.setSubjectEndPos(pos);
-        return;
+    // Data-driven colloquial time patterns for "until"
+    this.colloquialPatterns.forEach(function(config) {
+      // Word numbers version
+      untilRegex = new RegExp('([^a-z]+|^)(until )(' + config.search + ')(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)([^a-z]+|$)');
+      pos = this.textStringLower.search(untilRegex);
+      
+      if (pos > -1) {
+        matches = this.textStringLower.match(untilRegex);
+        if (matches && matches[4]) {
+          this.handleColloquialTime(matches, config, true, true);
+          this.setSubjectEndPos(pos);
+          return;
+        }
       }
-    }
-    
-    // Test for half past with numeric
-    untilRegex = /([^a-z]+|^)(until )(half past )([1-9][0-9]*)([^a-z]+|$)/;
-    pos = this.textStringLower.search(untilRegex);
-    
-    if (pos > -1) {
-      matches = this.textStringLower.match(untilRegex);
-      if (matches && matches[4]) {
-        hours = parseInt(matches[4]);
-        
-        this.setEndTime(hours, 30);
-        this.setSubjectEndPos(pos);
-        return;
+      
+      // Numeric version
+      untilRegex = new RegExp('([^a-z]+|^)(until )(' + config.search + ')([1-9][0-9]*)([^a-z]+|$)');
+      pos = this.textStringLower.search(untilRegex);
+      
+      if (pos > -1) {
+        matches = this.textStringLower.match(untilRegex);
+        if (matches && matches[4]) {
+          this.handleColloquialTime(matches, config, true, false);
+          this.setSubjectEndPos(pos);
+          return;
+        }
       }
-    }
-    
-    // Test for half with word numbers
-    untilRegex = /([^a-z]+|^)(until )(half )(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)([^a-z]+|$)/;
-    pos = this.textStringLower.search(untilRegex);
-    
-    if (pos > -1) {
-      matches = this.textStringLower.match(untilRegex);
-      if (matches && matches[4]) {
-        hours = this.convertTimeNumber(matches[4]);
-        
-        this.setEndTime(hours, 30);
-        this.setSubjectEndPos(pos);
-        return;
-      }
-    }
-    
-    // Test for half with numeric
-    untilRegex = /([^a-z]+|^)(until )(half )([1-9][0-9]*)([^a-z]+|$)/;
-    pos = this.textStringLower.search(untilRegex);
-    
-    if (pos > -1) {
-      matches = this.textStringLower.match(untilRegex);
-      if (matches && matches[4]) {
-        hours = parseInt(matches[4]);
-        
-        this.setEndTime(hours, 30);
-        this.setSubjectEndPos(pos);
-        return;
-      }
-    }
-    
-    // Test for quarter past with word numbers
-    untilRegex = /([^a-z]+|^)(until )(quarter past )(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)([^a-z]+|$)/;
-    pos = this.textStringLower.search(untilRegex);
-    
-    if (pos > -1) {
-      matches = this.textStringLower.match(untilRegex);
-      if (matches && matches[4]) {
-        hours = this.convertTimeNumber(matches[4]);
-        
-        this.setEndTime(hours, 15);
-        this.setSubjectEndPos(pos);
-        return;
-      }
-    }
-    
-    // Test for quarter past with numeric
-    untilRegex = /([^a-z]+|^)(until )(quarter past )([1-9][0-9]*)([^a-z]+|$)/;
-    pos = this.textStringLower.search(untilRegex);
-    
-    if (pos > -1) {
-      matches = this.textStringLower.match(untilRegex);
-      if (matches && matches[4]) {
-        hours = parseInt(matches[4]);
-        
-        this.setEndTime(hours, 15);
-        this.setSubjectEndPos(pos);
-        return;
-      }
-    }
-    
-    // Test for quarter to with word numbers
-    untilRegex = /([^a-z]+|^)(until )(quarter to )(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)([^a-z]+|$)/;
-    pos = this.textStringLower.search(untilRegex);
-    
-    if (pos > -1) {
-      matches = this.textStringLower.match(untilRegex);
-      if (matches && matches[4]) {
-        hours = this.convertTimeNumber(matches[4]);
-        
-        this.setEndTime(hours - 1, 45);
-        this.setSubjectEndPos(pos);
-        return;
-      }
-    }
-    
-    // Test for quarter to with numeric
-    untilRegex = /([^a-z]+|^)(until )(quarter to )([1-9][0-9]*)([^a-z]+|$)/;
-    pos = this.textStringLower.search(untilRegex);
-    
-    if (pos > -1) {
-      matches = this.textStringLower.match(untilRegex);
-      if (matches && matches[4]) {
-        hours = parseInt(matches[4]);
-        
-        this.setEndTime(hours - 1, 45);
-        this.setSubjectEndPos(pos);
-        return;
-      }
-    }
+    }.bind(this));
     
     // Test for word numbers (one to nine)
     untilRegex = /([^a-z]+|^)(until )(one|two|three|four|five|six|seven|eight|nine)([^a-z]+|$)/;
