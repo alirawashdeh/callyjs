@@ -1388,7 +1388,33 @@ describe('Cally', function() {
       appt = new Cally("Meet John at 4am finishing at 9", new Date("August 31, 2016 00:00:00"));
       assert(appt.startdate.getHours() == 4);
       assert(appt.enddate.getHours() == 9);
+    });
 
+  it("Can adjust duration so that the end time isn't before the start time", function() {
+      var appt;
+      appt = new Cally("Meet John at 3am finishing at 2", new Date("August 31, 2016 00:00:00"));
+      assert(appt.startdate.getHours() == 3);
+      assert(appt.enddate.getHours() == 14);
+      assert(appt.startdate.getDate() == 31);
+      assert(appt.enddate.getDate() == 31);
+
+      appt = new Cally("Meet John at 3pm finishing at 2", new Date("August 31, 2016 00:00:00"));
+      assert(appt.startdate.getHours() == 15);
+      assert(appt.enddate.getHours() == 2);
+      assert(appt.startdate.getDate() == 31);
+      assert(appt.enddate.getDate() == 1);
+
+      appt = new Cally("Meet John at 3pm finishing at 2pm", new Date("August 31, 2016 00:00:00"));
+      assert(appt.startdate.getHours() == 15);
+      assert(appt.enddate.getHours() == 14);
+      assert(appt.startdate.getDate() == 31);
+      assert(appt.enddate.getDate() == 1);
+
+      appt = new Cally("Meet John at 3am finishing at 2am", new Date("August 31, 2016 00:00:00"));
+      assert(appt.startdate.getHours() == 3);
+      assert(appt.enddate.getHours() == 2);
+      assert(appt.startdate.getDate() == 31);
+      assert(appt.enddate.getDate() == 1);
     });
 
   });

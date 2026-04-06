@@ -14,6 +14,7 @@ function Cally(text, currentdate) {
   this.enddatefound = false;
   this.starttimefound = false;
   this.endtimefound = false;
+  this.endtimeExplicitAmPm = false; // Track if end time had explicit AM/PM
 
   this.subject = "";
   this.subjectfound = false;
@@ -38,15 +39,45 @@ function Cally(text, currentdate) {
     this.starttimefound = true;
   };
 
-  this.setEndTime = function(hours, minutes) {
+  this.setEndTime = function(hours, minutes, explicitAmPm) {
     minutes = minutes || 0;
     this.enddate = new Date(this.startdate.getFullYear(), this.startdate.getMonth(), this.startdate.getDate(), hours, minutes, 0, 0);
     this.endtimefound = true;
+    this.endtimeExplicitAmPm = explicitAmPm || false;
   };
 
   this.createDateFromTime = function(hours, minutes) {
     minutes = minutes || 0;
     return new Date(this.startdate.getFullYear(), this.startdate.getMonth(), this.startdate.getDate(), hours, minutes, 0, 0);
+  };
+
+  // Helper to adjust end time if it's before start time
+  this.adjustEndTimeIfNeeded = function() {
+    if (!this.starttimefound || !this.endtimefound) {
+      return;
+    }
+    
+    var startHours = this.startdate.getHours();
+    var endHours = this.enddate.getHours();
+    var startMinutes = this.startdate.getMinutes();
+    var endMinutes = this.enddate.getMinutes();
+    
+    // Check if end time is before start time
+    if (endHours < startHours || (endHours === startHours && endMinutes < startMinutes)) {
+      // If both times have explicit AM/PM, move end time to next day
+      if (this.endtimeExplicitAmPm) {
+        this.enddate.setDate(this.enddate.getDate() + 1);
+      } else {
+        // If end time is ambiguous (no explicit AM/PM), use intelligent adjustment
+        if (startHours < 12) {
+          // If start is in morning (before noon) and end is before start, assume end is PM
+          this.enddate.setHours(endHours + 12);
+        } else {
+          // If start is in afternoon/evening, end must be next day
+          this.enddate.setDate(this.enddate.getDate() + 1);
+        }
+      }
+    }
   };
 
   // Colloquial time patterns configuration
@@ -70,7 +101,7 @@ function Cally(text, currentdate) {
     var minutes = config.minutes;
     
     if (isEnd) {
-      this.setEndTime(hours, minutes);
+      this.setEndTime(hours, minutes, false); // Colloquial times don't have explicit AM/PM
     } else {
       this.setStartTime(hours, minutes);
     }
@@ -102,6 +133,9 @@ function Cally(text, currentdate) {
       if (this.endtimefound === false) {
         this.enddate.setHours(0, 0, 0, 0);
       }
+      
+      // Adjust end time if it's before start time
+      this.adjustEndTimeIfNeeded();
       
       // For all-day events, reset end time to midnight even if duration was found
       if (this.allday && this.endtimefound) {
@@ -727,21 +761,21 @@ function Cally(text, currentdate) {
           // Handle edge case for 24 PM
           if (hours == 24) hours = 12;
           
-          this.setEndTime(hours, minutes);
+          this.setEndTime(hours, minutes, true); // Explicit AM/PM
         }
       },
       {
         name: '24-hour time',
         searchRegex: untilPrefix + "([0-2]{1}[0-9]):([0-5][0-9])" + untilSuffix,
         handler: function(matches) {
-          this.setEndTime(parseInt(matches[3]), parseInt(matches[4]));
+          this.setEndTime(parseInt(matches[3]), parseInt(matches[4]), false);
         }
       },
       {
         name: '4-digit time',
         searchRegex: untilPrefix + "([0-2]{1}[0-9])([0-5][0-9])" + untilSuffix,
         handler: function(matches) {
-          this.setEndTime(parseInt(matches[3]), parseInt(matches[4]));
+          this.setEndTime(parseInt(matches[3]), parseInt(matches[4]), false);
         }
       },
       {
@@ -749,14 +783,14 @@ function Cally(text, currentdate) {
         searchRegex: untilPrefix + "(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)" + untilSuffix,
         handler: function(matches) {
           var hours = this.convertTimeNumber(matches[3]);
-          this.setEndTime(hours, 0);
+          this.setEndTime(hours, 0, false);
         }
       },
       {
         name: 'Simple numeric',
         searchRegex: untilPrefix + "([0-9]{1,2})" + untilSuffix,
         handler: function(matches) {
-          this.setEndTime(parseInt(matches[3]), 0);
+          this.setEndTime(parseInt(matches[3]), 0, false);
         }
       }
     ];
