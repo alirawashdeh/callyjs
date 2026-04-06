@@ -1378,6 +1378,19 @@ describe('Cally', function() {
       assert(appt.startdate.getHours() == 7);
       assert(appt.enddate.getHours() == 18);
     });
+
+  it("Can find duration - finishing at X", function() {
+      var appt;
+      appt = new Cally("Meet John at 5am finishing 8", new Date("August 31, 2016 00:00:00"));
+      assert(appt.startdate.getHours() == 5);
+      assert(appt.enddate.getHours() == 8);
+
+      appt = new Cally("Meet John at 4am finishing at 9", new Date("August 31, 2016 00:00:00"));
+      assert(appt.startdate.getHours() == 4);
+      assert(appt.enddate.getHours() == 9);
+
+    });
+
   });
 
 });

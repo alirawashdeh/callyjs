@@ -704,7 +704,7 @@ function Cally(text, currentdate) {
 
   // Find until time - e.g. "until 5pm", "until half past 9", "until quarter to 9", "until 11PM", "until 2200", "until 21:00", "until eight"
   this.findUntil = function() {
-    var untilPrefix = "([^a-z]+|^)(until )";
+    var untilPrefix = "([^a-z]+|^)(until |finishing at |finishing )";
     var untilSuffix = "([^a-z]+|$)";
 
     var untilPatterns = [
