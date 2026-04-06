@@ -119,14 +119,14 @@ function Cally(text, currentdate) {
       this.findDateAndMonth();
       this.findTimeKeyword(); // e.g. evening, morning, in 1 hour
       this.findTimeNumber(); // e.g. 3PM, 15:00
-      this.findDuration(); // e.g. for 2 hours
+      this.findDurationTime(); // e.g. for 2 hours
       this.findUntil(); // e.g. until 5pm
 
       if (this.starttimefound === false) {
         this.startdate.setHours(0, 0, 0, 0);
       }
 
-      if (!this.endtimefound) {
+      if (!this.enddatefound && !this.endtimefound) {
         this.enddate = new Date(this.startdate);
       }
 
@@ -160,17 +160,27 @@ function Cally(text, currentdate) {
       { name: 'saturday|sat', index: 6 }
     ];
 
+    var earliestMatch = null;
+    var earliestPos = -1;
+
     for (var i = 0; i < days.length; i++) {
       var day = days[i];
-      var regexPattern = new RegExp('([^a-z]+|^)(on |this )*(' + day.name + ')([^a-z]+|$)');
+      var regexPattern = new RegExp('([^a-z]+|^)(on |this |from )*(' + day.name + ')([^a-z]+|$)');
       var regexPos = this.textStringLower.search(regexPattern);
 
-      if (regexPos > -1) {
-        var nextFound = this.findNext(regexPos);
-        this.setSubjectEndPos(regexPos);
-        this.setDayOfWeek(day.index, nextFound);
-        break;
+      if (regexPos > -1 && (earliestPos === -1 || regexPos < earliestPos)) {
+        earliestMatch = {
+          day: day,
+          pos: regexPos
+        };
+        earliestPos = regexPos;
       }
+    }
+
+    if (earliestMatch) {
+      var nextFound = this.findNext(earliestMatch.pos);
+      this.setSubjectEndPos(earliestMatch.pos);
+      this.setDayOfWeek(earliestMatch.day.index, nextFound);
     }
   };
 
@@ -604,7 +614,7 @@ function Cally(text, currentdate) {
 
 
   // Find duration - e.g. for 2 hours or for one hour
-  this.findDuration = function() {
+  this.findDurationTime = function() {
     var durationPatterns = [
       {
         name: 'minutes',
@@ -739,12 +749,46 @@ function Cally(text, currentdate) {
     }
   };
 
-  // Find until time - e.g. "until 5pm", "until half past 9", "until quarter to 9", "until 11PM", "until 2200", "until 21:00", "until eight"
+  // Find until time - e.g. "until 5pm", "until half past 9", "until quarter to 9", "until 11PM", "until 2200", "until 21:00", "until eight", "until Sunday"
   this.findUntil = function() {
     var untilPrefix = "([^a-z]+|^)(until |finishing at |finishing )";
     var untilSuffix = "([^a-z]+|$)";
 
     var untilPatterns = [
+      {
+        name: 'Day of week',
+        searchRegex: untilPrefix + "(sun|sunday|monday|mon|tuesday|tues|tue|wednesday|wed|thursday|thurs|thur|thu|friday|fri|saturday|sat)" + untilSuffix,
+        handler: function(matches) {
+          var dayMap = {
+            'sun': 0, 'sunday': 0,
+            'mon': 1, 'monday': 1,
+            'tues': 2, 'tue': 2, 'tuesday': 2,
+            'wed': 3, 'wednesday': 3,
+            'thurs': 4, 'thur': 4, 'thu': 4, 'thursday': 4,
+            'fri': 5, 'friday': 5,
+            'sat': 6, 'saturday': 6
+          };
+          
+          var dayIndex = dayMap[matches[3]];
+          var endDate = new Date(this.startdate);
+          var currentDay = endDate.getDay();
+          var diff = 0;
+          
+          // Calculate days to reach the target day from start date
+          if (currentDay < dayIndex) {
+            diff = dayIndex - currentDay;
+          } else if (currentDay > dayIndex) {
+            diff = 7 - currentDay + dayIndex;
+          } else {
+            // Same day - go to next week to ensure end date is after start date
+            diff = 7;
+          }
+          
+          endDate.setDate(endDate.getDate() + diff);
+          this.enddate = endDate;
+          this.enddatefound = true;
+        }
+      },
       {
         name: 'Time with AM/PM',
         searchRegex: untilPrefix + "([0-9]{1,2})(?::([0-5][0-9]))?(am|pm| am| pm)" + untilSuffix,
