@@ -1421,6 +1421,17 @@ describe('Cally', function() {
       assert(appt.enddatefound);
     });
 
+    it("Can cater for duration - from X until Y", function() {
+      var appt;
+      appt = new Cally("Meet John from 10am until four", new Date("August 31, 2016 00:00:00"));
+      assert(appt.startdate.getHours() == 10);
+      assert(appt.enddate.getHours() == 16);
+      assert(appt.startdate.getDate() == 31);
+      assert(appt.enddate.getDate() == 31);
+      assert(!appt.enddatefound);
+      assert(appt.subject == "Meet John");
+    });
+
   });
 
 });

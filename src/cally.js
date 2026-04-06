@@ -469,7 +469,7 @@ function Cally(text, currentdate) {
 
   // Find time number - e.g. 3PM, 15:00
   this.findTimeNumber = function() {
-    var expressionPrefix = "([^a-z]+|^)(at |starting at )";
+    var expressionPrefix = "([^a-z]+|^)(at |starting at |from )";
     var expressionSuffix = "([^a-z]+|$)";
 
     var timePatterns = [
