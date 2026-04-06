@@ -757,7 +757,7 @@ function Cally(text, currentdate) {
     var untilPatterns = [
       {
         name: 'Day of week',
-        searchRegex: untilPrefix + "(sun|sunday|monday|mon|tuesday|tues|tue|wednesday|wed|thursday|thurs|thur|thu|friday|fri|saturday|sat)" + untilSuffix,
+        searchRegex: "([^a-z]+|^)(until |finishing at |finishing |to |- )" + "(sun|sunday|monday|mon|tuesday|tues|tue|wednesday|wed|thursday|thurs|thur|thu|friday|fri|saturday|sat)" + untilSuffix,
         handler: function(matches) {
           var dayMap = {
             'sun': 0, 'sunday': 0,

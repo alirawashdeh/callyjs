@@ -1439,6 +1439,9 @@ describe('Cally', function() {
       assert(!appt.enddatefound);
       assert(appt.subject == "Meet John");
     });
+});
+
+  describe('Multi-day events', function() {
 
     it("Can cater for duration - from X day until Y day", function() {
       var appt;
@@ -1451,6 +1454,23 @@ describe('Cally', function() {
       assert(appt.enddatefound);
       assert(appt.enddate.getDay() == 0);
       assert(appt.enddate.getDate() > appt.startdate.getDate());
+      assert(!appt.endtimefound);
+      assert(!appt.starttimefound);
+    });
+
+    it("Can cater for duration - from X day to Y day", function() {
+      var appt;
+      var date = new Date();
+      appt = new Cally("Meet John from Saturday to Sunday", new Date());
+      assert(appt.startdatefound);
+      assert(appt.startdate.getDay() == 6);
+      assert(appt.startdate.getTime() > date.getTime());
+      assert(appt.startdate.getDate() <= date.setDate(date.getDate() + 7));
+      assert(appt.enddatefound);
+      assert(appt.enddate.getDay() == 0);
+      assert(appt.enddate.getDate() > appt.startdate.getDate());
+      assert(!appt.endtimefound);
+      assert(!appt.starttimefound);
     });
   });
 });
