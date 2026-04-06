@@ -67,14 +67,17 @@ function Cally(text, currentdate) {
       // If both times have explicit AM/PM, move end time to next day
       if (this.endtimeExplicitAmPm) {
         this.enddate.setDate(this.enddate.getDate() + 1);
+        this.enddatefound = true; // Mark that end date was adjusted to different date
       } else {
         // If end time is ambiguous (no explicit AM/PM), use intelligent adjustment
         if (startHours < 12) {
           // If start is in morning (before noon) and end is before start, assume end is PM
           this.enddate.setHours(endHours + 12);
+          // enddatefound remains false since we only changed the time, not the date
         } else {
           // If start is in afternoon/evening, end must be next day
           this.enddate.setDate(this.enddate.getDate() + 1);
+          this.enddatefound = true; // Mark that end date was adjusted to different date
         }
       }
     }
